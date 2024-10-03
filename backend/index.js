@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import compression from "compression";
 import { loadData } from "./utils/dataLoader.js";
 import trainingRoute from './routes/training_route.js';
 import classifyRoute from './routes/classify_route.js';
@@ -8,15 +11,24 @@ import questionsRoute from './routes/questions_route.js';
 import aboutRoute from './routes/about_route.js';
 import devplanRoute from './routes/devplan_route.js';
 import chatRoute from './routes/chat_route.js';
-import { APIError } from "./utils/errorHandler.js";
-
+import { errorHandler, notFoundHandler } from "./middleware/errorMiddleware.js";
 
 dotenv.config();
 const app = express();
-const port = process.env.PORT;
+const port = process.env.PORT || 3000;
 
+// Middleware
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(compression()); // Add compression
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
 
 // Mount routes
 app.use('/api/chat', chatRoute);
@@ -25,7 +37,6 @@ app.use('/api/assessment/about', aboutRoute);
 app.use('/api/upload-training', trainingRoute);
 app.use('/api/assessment/questions', questionsRoute);
 app.use('/api/generate-development-plan', devplanRoute);
-
 
 // API documentation route
 app.get("/", (req, res) => {
@@ -41,15 +52,9 @@ app.get("/", (req, res) => {
   res.json({ apiDocs });
 });
 
-// error handler
-app.use((err, req, res, next) => {
-  if (err instanceof APIError) {
-    res.status(err.status).json({ error: err.message });
-  } else {
-    res.status(500).json({ error: 'An unexpected error occurred' });
-  }
-});
-
+// Error handling middleware
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 // Loading data before starting the server
 loadData().then(() => {

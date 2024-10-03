@@ -1,10 +1,14 @@
-import { generateDevelopmentPlan } from '../utils/conduct_assesment.js';
+import { queueDevPlan, getJobStatus } from '../utils/queue.js';
 
-const handleDevPlan = async (req, res) => {
+export const handleDevPlan = async (req, res) => {
     const { query, memory } = req.body;
-    const response = await generateDevelopmentPlan(query, memory);
-    res.json({ response });
-}
+    const job = await queueDevPlan({ query, memory });
+    res.json({ jobId: job.id, message: 'Development plan generation queued' });
+};
 
-export { handleDevPlan };
+export const handleDevPlanStatus = async (req, res) => {
+    const { jobId } = req.params;
+    const status = await getJobStatus(jobId);
+    res.json(status);
+};
 
