@@ -30,7 +30,6 @@ export async function loadData() {
       readDemographicQuestions(),
     ]);
 
-    
     console.log("Loaded level one questions:", levelOneQuestions.length);
 
     if (!responsibilityLevelsData || responsibilityLevelsData.length === 0) {
@@ -333,7 +332,7 @@ export const capabilityAreasByLevel = {};
 
 function preprocessCapabilityAreas() {
   if (!Array.isArray(capabilityAreas) || capabilityAreas.length === 0) {
-   // console.warn("capabilityAreas is empty or not an array");
+    // console.warn("capabilityAreas is empty or not an array");
     return;
   }
 
@@ -353,7 +352,7 @@ function preprocessCapabilityAreas() {
 
     const trimmedLevel = level.trim();
     if (trimmedLevel === "") {
-     // console.warn("Empty Target Audience for area:", JSON.stringify(area));
+      // console.warn("Empty Target Audience for area:", JSON.stringify(area));
       return;
     }
 
@@ -364,7 +363,7 @@ function preprocessCapabilityAreas() {
   });
 
   //console.log(
-   // "Processed capability areas:",
-   // Object.keys(capabilityAreasByLevel)
+  // "Processed capability areas:",
+  // Object.keys(capabilityAreasByLevel)
   //);
 }

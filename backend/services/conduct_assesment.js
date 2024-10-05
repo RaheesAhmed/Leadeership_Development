@@ -3,18 +3,17 @@ import dotenv from "dotenv";
 import { queryRAGSystem } from "./rag.js";
 dotenv.config();
 
-
 // Define schemas for structured outputs
 const CoverPage = z.object({
   title: z.string(),
   participantName: z.string(),
-  assessmentDate: z.string()
+  assessmentDate: z.string(),
 });
 
 const ExecutiveSummary = z.object({
   overview: z.string(),
   keyStrengths: z.array(z.string()),
-  areasForImprovement: z.array(z.string())
+  areasForImprovement: z.array(z.string()),
 });
 
 const PersonalProfile = z.object({
@@ -22,16 +21,18 @@ const PersonalProfile = z.object({
   industry: z.string(),
   yearsOfExperience: z.number(),
   companySize: z.number(),
-  responsibilityLevel: z.string()
+  responsibilityLevel: z.string(),
 });
 
 const AssessmentOverview = z.object({
-  scores: z.array(z.object({
-    capability: z.string(),
-    skillScore: z.number(),
-    confidenceScore: z.number()
-  })),
-  interpretation: z.string()
+  scores: z.array(
+    z.object({
+      capability: z.string(),
+      skillScore: z.number(),
+      confidenceScore: z.number(),
+    })
+  ),
+  interpretation: z.string(),
 });
 
 const CapabilityAnalysis = z.object({
@@ -40,63 +41,75 @@ const CapabilityAnalysis = z.object({
   skillRating: z.number(),
   confidenceRating: z.number(),
   selfAssessmentSummary: z.string(),
-  focusAreas: z.array(z.object({
-    name: z.string(),
-    importance: z.string(),
-    analysis: z.string()
-  })),
+  focusAreas: z.array(
+    z.object({
+      name: z.string(),
+      importance: z.string(),
+      analysis: z.string(),
+    })
+  ),
   strengths: z.array(z.string()),
   areasForImprovement: z.array(z.string()),
-  personalizedRecommendations: z.array(z.object({
-    actionStep: z.string(),
-    expectedBenefit: z.string()
-  })),
-  recommendedResources: z.array(z.object({
-    title: z.string(),
-    type: z.string(),
-    link: z.string()
-  }))
+  personalizedRecommendations: z.array(
+    z.object({
+      actionStep: z.string(),
+      expectedBenefit: z.string(),
+    })
+  ),
+  recommendedResources: z.array(
+    z.object({
+      title: z.string(),
+      type: z.string(),
+      link: z.string(),
+    })
+  ),
 });
 
 const DevelopmentPlan = z.object({
   instructions: z.string(),
   goalSettingTemplate: z.object({
     areaForImprovement: z.string(),
-    specificGoal: z.string()
+    specificGoal: z.string(),
   }),
   actionPlanningTemplate: z.object({
     actionSteps: z.array(z.string()),
     resources: z.array(z.string()),
     timeline: z.object({
       startDate: z.string(),
-      targetDate: z.string()
-    })
+      targetDate: z.string(),
+    }),
   }),
   progressTrackingTemplate: z.object({
-    milestones: z.array(z.object({
-      description: z.string(),
-      targetDate: z.string()
-    })),
-    reflections: z.string()
+    milestones: z.array(
+      z.object({
+        description: z.string(),
+        targetDate: z.string(),
+      })
+    ),
+    reflections: z.string(),
   }),
   exampleEntry: z.object({
     goal: z.string(),
     actions: z.array(z.string()),
-    timeline: z.string()
-  })
+    timeline: z.string(),
+  }),
 });
 
 const AdditionalResources = z.object({
   tipsForSuccess: z.array(z.string()),
-  commonChallenges: z.array(z.object({
-    challenge: z.string(),
-    solution: z.string()
-  })),
-  additionalResourceLinks: z.array(z.object({
-    title: z.string(),
-    link: z.string(),
-    description: z.string()
-  }))
+  commonChallenges: z.array(
+    z.object({
+      challenge: z.string(),
+      solution: z.string(),
+    })
+  ),
+  additionalResourceLinks: z.array(
+    z.object({
+      title: z.string(),
+      link: z.string(),
+      description: z.string(),
+    })
+  ),
 });
 
 const Conclusion = z.object({
@@ -105,8 +118,8 @@ const Conclusion = z.object({
   contactInformation: z.object({
     email: z.string(),
     phone: z.string().optional(),
-    website: z.string().optional()
-  })
+    website: z.string().optional(),
+  }),
 });
 
 const DevelopmentPlanDocument = z.object({
@@ -117,7 +130,7 @@ const DevelopmentPlanDocument = z.object({
   detailedAnalysis: z.array(CapabilityAnalysis),
   developmentPlan: DevelopmentPlan,
   additionalResources: AdditionalResources,
-  conclusion: Conclusion
+  conclusion: Conclusion,
 });
 
 // Helper function to create a structured prompt
@@ -149,14 +162,24 @@ Your response must strictly adhere to the JSON schema provided for this section.
 `;
 }
 
-export async function generateDevelopmentPlan(userData, assessmentData, instructions) {
+export async function generateDevelopmentPlan(
+  userData,
+  assessmentData,
+  instructions
+) {
   const developmentPlan = {};
   let memory = null;
 
   // Helper function to use queryRAGSystem
   async function generateSection(section, schema) {
     const prompt = createStructuredPrompt(section, userData, assessmentData);
-    const { response, memory: updatedMemory } = await queryRAGSystem(prompt, memory, userData, assessmentData, instructions);
+    const { response, memory: updatedMemory } = await queryRAGSystem(
+      prompt,
+      memory,
+      userData,
+      assessmentData,
+      instructions
+    );
     memory = updatedMemory;
     return schema.parse(response);
   }
@@ -165,7 +188,10 @@ export async function generateDevelopmentPlan(userData, assessmentData, instruct
   developmentPlan.coverPage = await generateSection("Cover Page", CoverPage);
 
   // Generate Executive Summary
-  developmentPlan.executiveSummary = await generateSection("Executive Summary", ExecutiveSummary);
+  developmentPlan.executiveSummary = await generateSection(
+    "Executive Summary",
+    ExecutiveSummary
+  );
 
   // Generate Personal Profile
   developmentPlan.personalProfile = {
@@ -173,31 +199,44 @@ export async function generateDevelopmentPlan(userData, assessmentData, instruct
     industry: userData.industry,
     yearsOfExperience: calculateYearsOfExperience(userData.startDate),
     companySize: userData.companySize,
-    responsibilityLevel: determineResponsibilityLevel(userData)
+    responsibilityLevel: determineResponsibilityLevel(userData),
   };
 
   // Generate Assessment Overview
-  developmentPlan.assessmentOverview = await generateSection("Assessment Overview", AssessmentOverview);
+  developmentPlan.assessmentOverview = await generateSection(
+    "Assessment Overview",
+    AssessmentOverview
+  );
 
   // Generate Detailed Analysis
   developmentPlan.detailedAnalysis = [];
   for (const capability of assessmentData.capabilities) {
-    const capabilityAnalysis = await generateSection(`Detailed Analysis for ${capability.name}`, CapabilityAnalysis);
+    const capabilityAnalysis = await generateSection(
+      `Detailed Analysis for ${capability.name}`,
+      CapabilityAnalysis
+    );
     developmentPlan.detailedAnalysis.push(capabilityAnalysis);
   }
 
   // Generate Development Plan
-  developmentPlan.developmentPlan = await generateSection("Development Plan", DevelopmentPlan);
+  developmentPlan.developmentPlan = await generateSection(
+    "Development Plan",
+    DevelopmentPlan
+  );
 
   // Generate Additional Resources
-  developmentPlan.additionalResources = await generateSection("Additional Resources", AdditionalResources);
+  developmentPlan.additionalResources = await generateSection(
+    "Additional Resources",
+    AdditionalResources
+  );
 
   // Generate Conclusion
   developmentPlan.conclusion = await generateSection("Conclusion", Conclusion);
 
   // Validate the entire development plan using DevelopmentPlanDocument schema
   try {
-    const validatedDevelopmentPlan = DevelopmentPlanDocument.parse(developmentPlan);
+    const validatedDevelopmentPlan =
+      DevelopmentPlanDocument.parse(developmentPlan);
     return validatedDevelopmentPlan;
   } catch (error) {
     console.error("Development plan validation failed:", error);
@@ -210,7 +249,3 @@ function calculateYearsOfExperience(startDate) {
   const now = new Date();
   return Math.floor((now - start) / (365.25 * 24 * 60 * 60 * 1000));
 }
-
-
-
-
