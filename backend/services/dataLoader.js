@@ -129,32 +129,34 @@ export const readDemographicQuestions = async () => {
     return [
       {
         id: "name",
-        question: "Please enter what name you'd like to use in your report.",
+        question: "Please enter what name you’d like to use in your report.",
         type: "text",
-        placeholder: "Short answer",
+        placeholder: "Short Answer",
       },
       {
         id: "industry",
-        question: "What industry is your business in?",
+        question:
+          "Please specify the industry your organization operates within.",
         type: "text",
         placeholder: "Healthcare, Technology, Manufacturing, or Education",
       },
       {
         id: "companySize",
-        question: "How many people work at your company?",
+        question:
+          "Please enter the total number of employees in your entire organization.",
         type: "number",
         placeholder: "500",
       },
       {
         id: "department",
         question:
-          "What department or division do you primarily work in within your organization?",
+          "Please specify your primary department or division. For those with broader responsibilities, such as overseeing multiple areas or the entire organization, indicate the most encompassing area.",
         type: "text",
         placeholder: "Finance, Western Region Operations, or Company-wide",
       },
       {
         id: "jobTitle",
-        question: "What is your job title?",
+        question: "Please enter the exact title as used in your workplace.",
         type: "text",
         placeholder: "Enter your exact job title",
       },
@@ -167,7 +169,7 @@ export const readDemographicQuestions = async () => {
       {
         id: "directReportRoles",
         question:
-          "What types of roles report directly to you? Please list them.",
+          "What types of roles report directly to you? Please list them. If none, please state 'None'.",
         type: "text",
         placeholder: "Manager of Engineering, Sales Coordinator",
       },
@@ -196,7 +198,8 @@ export const readDemographicQuestions = async () => {
       },
       {
         id: "typicalProject",
-        question: "Describe a typical project or task you are responsible for.",
+        question:
+          "Describe a typical project or task you are responsible for. Please include details about what the task involves, any teams or departments you interact with, and its impact on your organization.",
         type: "textarea",
         placeholder:
           "I develop IT security policies that align with company-wide risk management strategies and coordinate with the legal and tech departments to implement them.",
@@ -216,9 +219,9 @@ export const readDemographicQuestions = async () => {
         additionalInfo: {
           type: "text",
           question:
-            "If Yes, please specify whether it is for your department only or if it spans multiple departments.",
+            "If Yes, please specify whether it is for your department only or if it spans multiple departments. Example: 'Yes, I manage the budget for the entire marketing department.'",
           placeholder:
-            "Yes, I manage the budget for the entire marketing department",
+            "Yes, I manage the budget for the entire marketing department.",
         },
       },
     ];

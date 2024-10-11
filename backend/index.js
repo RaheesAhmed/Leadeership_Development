@@ -46,6 +46,7 @@ app.use("/api/assessment/demographic", handleDemographic);
 // API documentation route
 app.get("/", (req, res) => {
   const apiDocs = {
+    "/api/chat": "Chat with the AI",
     "/api/upload-training": "Upload training data",
     "/api/classify": "Classify responsibility level",
     "/api/assessment/questions": "Get all assessment questions",
@@ -78,8 +79,6 @@ if (cluster.isMaster) {
     cluster.fork(); // Replace the dead worker
   });
 } else {
-  // Workers can share any TCP connection
-  // In this case it is an HTTP server
   loadData()
     .then(() => {
       app.listen(port, () => {

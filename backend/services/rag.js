@@ -34,10 +34,10 @@ export async function queryVectorStore(vectorStore, query) {
 }
 
 // Updated function to generate answer using ChatOpenAI with Prompt Template and Memory
-export async function generateAnswer(docs, query, memory, custom_instructions) {
+export async function generateAnswer(docs, query, memory) {
   const model = new ChatOpenAI({ model: "gpt-4o-mini" });
-
-  const template = `As an AI leadership development expert, your task is to generate the  personalized development plan. 
+  const custom_instructions = await getCustomInstructions();
+  const template = `${custom_instructions}As an AI leadership development expert, your task is to generate the  personalized development plan. 
 Use the following information about the participant:
 
 
@@ -96,7 +96,7 @@ export async function processFileAndSaveToSupabase(filePath) {
 }
 
 // Updated main function to query the RAG system with memory
-export async function queryRAGSystem(query, existingMemory = null, chatType) {
+export async function queryRAGSystem(query, existingMemory = null) {
   const vectorStore = await SupabaseVectorStore.fromExistingIndex(
     new OpenAIEmbeddings(),
     {
@@ -115,7 +115,7 @@ export async function queryRAGSystem(query, existingMemory = null, chatType) {
       inputKey: "question",
     });
 
-  const custom_instructions = await getCustomInstructions(chatType);
+  const custom_instructions = await getCustomInstructions();
   console.log(custom_instructions);
   const answer = await generateAnswer(
     relevantDocs,
@@ -135,11 +135,11 @@ export async function startConversation() {
   });
 }
 
-export async function getCustomInstructions(chatType) {
+export async function getCustomInstructions() {
   try {
     const { data, error } = await supabaseClient
       .from("instructions")
-      .select("system_prompt, whatsapp_prompt")
+      .select("system_prompt")
       .single();
 
     if (error) throw error;
@@ -149,12 +149,7 @@ export async function getCustomInstructions(chatType) {
       return null;
     }
 
-    if (chatType === "whatsapp") {
-      console.log("WhatsApp prompt:", data.whatsapp_prompt);
-      return data.whatsapp_prompt || "Default WhatsApp instructions";
-    } else {
-      return data.system_prompt || "Default system instructions";
-    }
+    return data.system_prompt || "";
   } catch (error) {
     console.error("Error in getCustomInstructions:", error);
     return null;

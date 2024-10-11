@@ -5,6 +5,7 @@ import {
 
 const handleQuestionsbyLevel = async (req, res) => {
   const level = req.params.level;
+  console.log("level recieved", level);
   const levelOneQuestions = await getLevelOneQuestionsbyLevel({ level });
   res.json({ levelOneQuestions });
 };

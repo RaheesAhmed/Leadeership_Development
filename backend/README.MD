@@ -5,6 +5,7 @@
 This backend system is designed to support a Leadership Development AI application. It provides various endpoints for user assessment, chat functionality, and personalized development plan generation.
 
 ## Project Structure
+
 ```backend/
 ├── controller/
 │ ├── about_controller.js
@@ -33,6 +34,7 @@ This backend system is designed to support a Leadership Development AI applicati
 │ └── validationSchemas.js
 └── README.MD
 ```
+
 ## Key Components
 
 ### Controllers
@@ -118,4 +120,3 @@ The application uses JSON files and Supabase for data storage and retrieval. The
 - Enhance the RAG system with more advanced NLP techniques
 - Implement caching mechanisms for frequently accessed data
 - Add unit and integration tests for improved reliability
-
