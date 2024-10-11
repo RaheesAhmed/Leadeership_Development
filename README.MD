@@ -43,7 +43,23 @@ The frontend of the Leadership Development AI project is built using React and N
 
 ## Backend
 
-(Backend details to be added)
+```
+cd backend
+```
+
+Install dependencies:
+
+```
+npm install
+```
+
+Run the Development Server:
+
+```
+npm run dev
+```
+
+The server is running on `http://localhost:5000`
 
 ## Development Status
 
