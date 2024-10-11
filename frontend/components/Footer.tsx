@@ -40,14 +40,6 @@ const Footer = () => {
                   Testimonials
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="#pricing"
-                  className="text-indigo-100 hover:text-white transition duration-300"
-                >
-                  Pricing
-                </Link>
-              </li>
             </ul>
           </div>
           <div>
@@ -55,7 +47,7 @@ const Footer = () => {
             <ul className="space-y-2">
               <li>
                 <Link
-                  href="#"
+                  href="/privacy-policy"
                   className="text-indigo-100 hover:text-white transition duration-300"
                 >
                   Privacy Policy
@@ -63,7 +55,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/terms-of-service"
                   className="text-indigo-100 hover:text-white transition duration-300"
                 >
                   Terms of Service
@@ -71,7 +63,7 @@ const Footer = () => {
               </li>
               <li>
                 <Link
-                  href="#"
+                  href="/cookie-policy"
                   className="text-indigo-100 hover:text-white transition duration-300"
                 >
                   Cookie Policy

@@ -35,7 +35,7 @@ export async function queryVectorStore(vectorStore, query) {
 
 // Updated function to generate answer using ChatOpenAI with Prompt Template and Memory
 export async function generateAnswer(docs, query, memory) {
-  const model = new ChatOpenAI({ model: "gpt-4o-mini" });
+  const model = new ChatOpenAI({ model: "gpt-4o-mini", maxTokens: 8000 });
   const custom_instructions = await getCustomInstructions();
   const template = `${custom_instructions}As an AI leadership development expert, your task is to generate the  personalized development plan. 
 Use the following information about the participant:
