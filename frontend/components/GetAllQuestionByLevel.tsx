@@ -77,6 +77,7 @@ const GetAllQuestionByLevel: React.FC<GetAllQuestionByLevelProps> = ({
   const [userReflections, setUserReflections] = useState<
     Record<string, number>
   >({});
+  const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -114,6 +115,27 @@ const GetAllQuestionByLevel: React.FC<GetAllQuestionByLevelProps> = ({
 
     fetchQuestions();
   }, [level]);
+
+  useEffect(() => {
+    if (questions) {
+      const totalQuestions = questions.levelOneQuestions.reduce(
+        (sum, area) => sum + area.questions.length,
+        0
+      );
+      const answeredQuestions =
+        Object.keys(userRatings).length + Object.keys(userReflections).length;
+      const newAllQuestionsAnswered = answeredQuestions === totalQuestions * 2;
+      setAllQuestionsAnswered(newAllQuestionsAnswered);
+      console.log(
+        "All questions answered:",
+        newAllQuestionsAnswered,
+        "Answered:",
+        answeredQuestions,
+        "Total:",
+        totalQuestions * 2
+      );
+    }
+  }, [questions, userRatings, userReflections]);
 
   const handleNext = () => {
     if (!questions) return;
@@ -168,6 +190,7 @@ const GetAllQuestionByLevel: React.FC<GetAllQuestionByLevelProps> = ({
   };
 
   const handleSubmit = async () => {
+    console.log("handleSubmit called");
     if (!questions) return;
 
     const allAnswers = questions.levelOneQuestions.flatMap((area, areaIndex) =>
@@ -182,11 +205,10 @@ const GetAllQuestionByLevel: React.FC<GetAllQuestionByLevelProps> = ({
       })
     );
 
-    try {
-      // Call the onComplete prop with the answers
-      await onComplete(allAnswers);
+    console.log("Submitting answers:", allAnswers);
 
-      // Navigate to the next page or show a success message
+    try {
+      await onComplete(allAnswers);
       router.push("/results"); // Adjust the route as needed
     } catch (error) {
       console.error("Error submitting assessment:", error);
@@ -345,23 +367,17 @@ const GetAllQuestionByLevel: React.FC<GetAllQuestionByLevelProps> = ({
             Previous
           </Button>
           <Button
-            onClick={handleNext}
+            onClick={allQuestionsAnswered ? handleSubmit : handleNext}
             disabled={
-              (currentAreaIndex === questions.levelOneQuestions.length - 1 &&
-                currentQuestionIndex === currentArea.questions.length - 1 &&
-                !isRatingQuestion) ||
-              (isRatingQuestion && !userRatings[questionKey]) ||
-              (!isRatingQuestion && !userReflections[questionKey])
+              !allQuestionsAnswered &&
+              ((isRatingQuestion && !userRatings[questionKey]) ||
+                (!isRatingQuestion && !userReflections[questionKey]))
             }
             variant="outline"
             size="lg"
             className="flex items-center text-sm font-semibold hover:bg-primary hover:text-white transition-all duration-300"
           >
-            {currentAreaIndex === questions.levelOneQuestions.length - 1 &&
-            currentQuestionIndex === currentArea.questions.length - 1 &&
-            !isRatingQuestion
-              ? "Submit"
-              : "Next"}
+            {allQuestionsAnswered ? "Submit" : "Next"}
             <ChevronRight className="w-5 h-5 ml-2" />
           </Button>
         </CardFooter>

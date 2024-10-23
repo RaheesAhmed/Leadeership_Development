@@ -1,28 +1,11 @@
-import Queue from "bull";
+import { generateDevelopmentPlan } from "../services/conduct_assesment.js";
 
-const devPlanQueue = new Queue(
-  "development plan generation",
-  process.env.REDIS_URL
-);
-
-export const queueDevPlan = (data) => {
-  return devPlanQueue.add(data);
-};
-
-devPlanQueue.process(async (job) => {
+export const queueDevPlan = async (data) => {
   try {
-    const { projectDetails } = job.data;
-
-    // Import the generateDevelopmentPlan function
-    const { generateDevelopmentPlan } = await import(
-      "../services/conduct_assesment.js"
-    );
+    const { projectDetails } = data;
 
     // Generate the development plan
     const developmentPlan = await generateDevelopmentPlan(projectDetails);
-
-    // Update job progress
-    job.progress(100);
 
     // Return the result
     return developmentPlan;
@@ -30,15 +13,4 @@ devPlanQueue.process(async (job) => {
     console.error("Error processing development plan job:", error);
     throw error;
   }
-});
-
-export const getJobStatus = async (jobId) => {
-  const job = await devPlanQueue.getJob(jobId);
-  if (job === null) {
-    return { status: "not found" };
-  }
-  const state = await job.getState();
-  const progress = job._progress;
-  const result = job.returnvalue;
-  return { jobId, state, progress, result };
 };

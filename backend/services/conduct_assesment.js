@@ -1,6 +1,6 @@
 import { z } from "zod";
 import dotenv from "dotenv";
-import { queryRAGSystem } from "./rag.js";
+import writeDevelopmentPlan from "./development_plan.js";
 dotenv.config();
 
 // Define schemas for structured outputs
@@ -173,14 +173,7 @@ export async function generateDevelopmentPlan(
   // Helper function to use queryRAGSystem
   async function generateSection(section, schema) {
     const prompt = createStructuredPrompt(section, userData, assessmentData);
-    const { response, memory: updatedMemory } = await queryRAGSystem(
-      prompt,
-      memory,
-      userData,
-      assessmentData,
-      instructions
-    );
-    memory = updatedMemory;
+    const response = await writeDevelopmentPlan(prompt);
     return schema.parse(response);
   }
 

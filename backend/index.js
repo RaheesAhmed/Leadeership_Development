@@ -16,7 +16,10 @@ import { cacheMiddleware } from "./utils/cache.js";
 import cluster from "cluster";
 import os from "os";
 import handleDemographic from "./routes/demographic_route.js";
-
+import assistantRoute from "./routes/assistant_route.js";
+import multiRaterRoute from "./routes/multi_rater_route.js";
+import dashboardRoute from "./routes/dashboard_route.js";
+import authRoute from "./routes/auth_route.js";
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
@@ -28,11 +31,11 @@ app.use(express.json());
 app.use(compression()); // Add compression
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-});
-app.use(limiter);
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // limit each IP to 100 requests per windowMs
+// });
+// app.use(limiter);
 
 // Mount routes
 app.use("/api/chat", chatRoute);
@@ -42,6 +45,10 @@ app.use("/api/upload-training", trainingRoute);
 app.use("/api/assessment/questions", questionsRoute);
 app.use("/api/generate-development-plan", devplanRoute);
 app.use("/api/assessment/demographic", handleDemographic);
+app.use("/api/assistant", assistantRoute);
+app.use("/api/multi-rater", multiRaterRoute);
+app.use("/api/dashboard", dashboardRoute);
+app.use("/api/auth", authRoute);
 
 // API documentation route
 app.get("/", (req, res) => {

@@ -137,19 +137,51 @@ export async function startConversation() {
 
 export async function getCustomInstructions() {
   try {
-    const { data, error } = await supabaseClient
-      .from("instructions")
-      .select("system_prompt")
-      .single();
-
-    if (error) throw error;
-
-    if (!data) {
-      console.error("No instructions found in the database");
-      return null;
-    }
-
-    return data.system_prompt || "";
+    const instructions = `You are  AI leadership development expert",
+    "task": "Generate personalized development plan",
+    "keyGuidelines": 
+      
+        "name": "Personalization",
+        "description": "Address the participant by name and reflect their unique profile"
+      
+      
+        "name": "Tone and Language",
+        "description": "Use clear, encouraging language that motivates engagement"
+      
+        "name": "Data Accuracy",
+        "description": "Ensure all data from the participant's input and assessment is accurately reflected"
+      
+        "name": "Formatting",
+        "description": "Use headings, subheadings, bullet points, and numbered lists for readability"
+      
+        "name": "Content Generation",
+        "description": "Follow the specific guidelines for each section as outlined in the Development Plan structure"
+      
+        "name": "Inference and Synthesis",
+        "description": "Make reasonable inferences from participant responses to generate meaningful analyses"
+      
+        "name": "Resource Recommendation",
+        "description": "Suggest appropriate, credible, and relevant resources when applicable"
+     
+    "participantInfo": 
+      "description": "Use the following information about the participant"
+    ,
+    "responseGuidelines": 
+      "Ensure response is tailored to the participant's specific role, industry, and responsibility level",
+      "Maintain a professional yet encouraging tone throughout",
+      "Focus on actionable insights and practical recommendations"
+    ,
+    "developmentPlanStructure": 
+      "conclusion": {},
+      "goalSetting": {},
+      "introduction": {},
+      "developmentAreas": {},
+      "strengthsAnalysis": {},
+      "resourceRecommendations": {}
+    
+  
+`;
+    return instructions;
   } catch (error) {
     console.error("Error in getCustomInstructions:", error);
     return null;

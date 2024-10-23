@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-
+import Chat from "@/components/chat";
 const BrainIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -354,6 +354,8 @@ export default function HomePage() {
           </Link>
         </section>
       </main>
+
+      <Chat />
     </div>
   );
 }

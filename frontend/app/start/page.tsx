@@ -8,6 +8,7 @@ import { demographicQuestions } from "@/utils/questions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormData } from "@/types/types"; // Make sure to import the FormData type
+import { Loader2 } from "lucide-react"; // Import the Loader2 icon
 
 interface ResponsibilityLevel {
   role: string;
@@ -20,14 +21,18 @@ export default function StartPage() {
   const [responsibilityLevel, setResponsibilityLevel] =
     useState<ResponsibilityLevel | null>(null);
   const [userInfo, setUserInfo] = useState<FormData | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // New state for loading
+  const [generatedPlan, setGeneratedPlan] = useState<string | null>(null);
 
   const handleDemographicSubmit = async (formData: FormData) => {
     console.log("Received form data in StartPage:", formData);
     try {
-      // Capitalize the first letter of decisionLevel
+      // Ensure decisionLevel is a string before using charAt and slice
       const formattedDecisionLevel =
-        formData.decisionLevel.charAt(0).toUpperCase() +
-        formData.decisionLevel.slice(1);
+        typeof formData.decisionLevel === "string"
+          ? formData.decisionLevel.charAt(0).toUpperCase() +
+            formData.decisionLevel.slice(1)
+          : String(formData.decisionLevel);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SERVER_URL}/api/classify`,
@@ -43,7 +48,7 @@ export default function StartPage() {
             department: formData.department,
             jobTitle: formData.jobTitle,
             directReports: formData.directReports,
-            decisionLevel: formattedDecisionLevel, // Use the formatted value
+            decisionLevel: formattedDecisionLevel,
             typicalProject: formData.typicalProject,
             levelsToCEO: formData.levelsToCEO,
             managesBudget: formData.managesBudget,
@@ -61,9 +66,10 @@ export default function StartPage() {
   };
 
   const handleAssessmentComplete = async (answers: any) => {
+    setIsLoading(true);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/chat`,
+        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/assistant/generate-development-plan`,
         {
           method: "POST",
           headers: {
@@ -73,14 +79,52 @@ export default function StartPage() {
             userInfo,
             responsibilityLevel,
             answers,
+            assessmentCompleted: true,
           }),
         }
       );
       const data = await response.json();
       console.log("Generated plan:", data);
+      setGeneratedPlan(data.plan);
       setStage("planGenerated");
     } catch (error) {
       console.error("Error generating plan:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSkipAssessment = async () => {
+    if (!userInfo || !responsibilityLevel) {
+      console.error("User info or responsibility level is missing");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/assistant/generate-development-plan`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userInfo,
+            responsibilityLevel,
+            assessmentCompleted: false,
+          }),
+        }
+      );
+      const data = await response.json();
+      console.log("Generated plan:", data);
+      setGeneratedPlan(data.plan);
+      setStage("planGenerated");
+    } catch (error) {
+      console.error("Error generating plan:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -142,9 +186,56 @@ export default function StartPage() {
           <KnowMoreAboutAssesment level={responsibilityLevel.level} />
         ) : null;
       case "skipAssessment":
-        return <div>Assessment skipped. Implement next steps here.</div>;
+        return (
+          <Card className="max-w-md mx-auto mt-8">
+            <CardHeader>
+              <CardTitle>Skipping Assessment</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>
+                You've chosen to skip the assessment. We'll generate a
+                development plan based on your profile information.
+              </p>
+              <Button
+                onClick={handleSkipAssessment}
+                className="mt-4"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Generate Plan"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        );
       case "planGenerated":
-        return <div>Plan generated. Display the plan or next steps here.</div>;
+        return (
+          <Card className="max-w-md mx-auto mt-8">
+            <CardHeader>
+              <CardTitle>Development Plan Generated</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>Your development plan has been generated:</p>
+              <div className="mt-4 p-4 bg-gray-100 rounded-md">
+                <pre className="whitespace-pre-wrap">{generatedPlan}</pre>
+              </div>
+              {/* Add a button to view the plan in the dashboard if applicable */}
+              <Button
+                className="mt-4"
+                onClick={() => {
+                  /* Navigate to dashboard */
+                }}
+              >
+                View in Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        );
       default:
         return null;
     }
