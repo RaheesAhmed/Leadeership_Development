@@ -9,11 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormData } from "@/types/types"; // Make sure to import the FormData type
 import { Loader2 } from "lucide-react"; // Import the Loader2 icon
+import { useRouter } from "next/navigation"; // Add this import
 
 interface ResponsibilityLevel {
   role: string;
   level: number;
   description: string;
+}
+
+interface MultiRaterData {
+  raterEmail: string;
+  relationship: string;
+  completed: boolean;
 }
 
 export default function StartPage() {
@@ -23,17 +30,12 @@ export default function StartPage() {
   const [userInfo, setUserInfo] = useState<FormData | null>(null);
   const [isLoading, setIsLoading] = useState(false); // New state for loading
   const [generatedPlan, setGeneratedPlan] = useState<string | null>(null);
+  const [raters, setRaters] = useState<MultiRaterData[]>([]);
+  const router = useRouter(); // Add this line
 
   const handleDemographicSubmit = async (formData: FormData) => {
     console.log("Received form data in StartPage:", formData);
     try {
-      // Ensure decisionLevel is a string before using charAt and slice
-      const formattedDecisionLevel =
-        typeof formData.decisionLevel === "string"
-          ? formData.decisionLevel.charAt(0).toUpperCase() +
-            formData.decisionLevel.slice(1)
-          : String(formData.decisionLevel);
-
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SERVER_URL}/api/classify`,
         {
@@ -48,20 +50,32 @@ export default function StartPage() {
             department: formData.department,
             jobTitle: formData.jobTitle,
             directReports: formData.directReports,
-            decisionLevel: formattedDecisionLevel,
+            decisionLevel: formData.decisionLevel,
             typicalProject: formData.typicalProject,
             levelsToCEO: formData.levelsToCEO,
             managesBudget: formData.managesBudget,
           }),
         }
       );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || "Failed to classify responsibility level"
+        );
+      }
+
       const data = await response.json();
       console.log("Responsibility level:", data.responsibilityLevel);
+      if (!data.responsibilityLevel) {
+        throw new Error("Responsibility level not found in response");
+      }
       setResponsibilityLevel(data.responsibilityLevel);
       setUserInfo(formData);
       setStage("assessmentOptions");
     } catch (error) {
       console.error("Error classifying responsibility level:", error);
+      // You might want to show an error message to the user here
     }
   };
 
@@ -128,14 +142,24 @@ export default function StartPage() {
     }
   };
 
+  const navigateToDashboard = () => {
+    // Store the generated plan in localStorage before navigating
+    if (generatedPlan) {
+      localStorage.setItem("developmentPlan", generatedPlan);
+    }
+    // router.push("/dashboard");
+  };
+
   const renderStage = () => {
     switch (stage) {
       case "demographic":
         return (
-          <DemographicForm
-            demographicQuestions={demographicQuestions}
-            onSubmit={handleDemographicSubmit}
-          />
+          <>
+            <DemographicForm
+              demographicQuestions={demographicQuestions}
+              onSubmit={handleDemographicSubmit}
+            />
+          </>
         );
       case "assessmentOptions":
         return (
@@ -215,30 +239,40 @@ export default function StartPage() {
         );
       case "planGenerated":
         return (
-          <Card className="max-w-md mx-auto mt-8">
+          <Card className="max-w-3xl mx-auto mt-8">
             <CardHeader>
-              <CardTitle>Development Plan Generated</CardTitle>
+              <CardTitle>Your Development Plan</CardTitle>
             </CardHeader>
             <CardContent>
-              <p>Your development plan has been generated:</p>
-              <div className="mt-4 p-4 bg-gray-100 rounded-md">
-                <pre className="whitespace-pre-wrap">{generatedPlan}</pre>
+              <p className="mb-4">
+                Based on your profile and assessment, we've generated the
+                following development plan:
+              </p>
+              <div className="mt-4 p-6 bg-gray-100 rounded-md overflow-auto max-h-[60vh]">
+                <pre className="whitespace-pre-wrap text-sm">
+                  {generatedPlan}
+                </pre>
               </div>
-              {/* Add a button to view the plan in the dashboard if applicable */}
-              <Button
-                className="mt-4"
-                onClick={() => {
-                  /* Navigate to dashboard */
-                }}
-              >
-                View in Dashboard
-              </Button>
+              <div className="mt-6 flex justify-between">
+                <Button onClick={navigateToDashboard}>View in Dashboard</Button>
+                <Button variant="outline" onClick={() => window.print()}>
+                  Print Plan
+                </Button>
+              </div>
             </CardContent>
           </Card>
         );
       default:
         return null;
     }
+  };
+
+  const exportAssessmentData = async () => {
+    // Add export functionality for consultants/companies
+  };
+
+  const generateAggregateReport = async () => {
+    // Add reporting functionality for organizational insights
   };
 
   return <div className="container mx-auto px-4 py-8">{renderStage()}</div>;

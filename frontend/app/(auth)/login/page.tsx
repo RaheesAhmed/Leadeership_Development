@@ -16,37 +16,35 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        // Store the token securely (e.g., in HttpOnly cookie)
-        document.cookie = `token=${data.token}; path=/; secure; HttpOnly`;
-        router.push("/dashboard");
-      } else {
-        setError("Invalid email or password");
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
+      await login(email, password); // Remove response const since we handle auth state in context
+      router.push("/dashboard");
+    } catch (err: any) {
+      // More detailed error handling
+      const errorMessage =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Invalid email or password";
+      setError(errorMessage);
+      console.error("Login error:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -94,8 +92,19 @@ export default function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" className="w-full gradient-bg text-white">
-              Login
+            <Button
+              type="submit"
+              className="w-full gradient-bg text-white"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Spinner className="mr-2" />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
             </Button>
           </form>
         </CardContent>

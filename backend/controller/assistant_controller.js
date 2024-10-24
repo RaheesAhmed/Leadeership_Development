@@ -14,23 +14,12 @@ export const handleGenerateDevelopmentPlan = async (req, res) => {
       req.body;
     console.log({ userInfo, responsibilityLevel, assessmentCompleted });
 
-    let assessmentData;
-
-    if (assessmentCompleted) {
-      // If assessment was completed, include the answers
-      assessmentData = {
-        ratings: answers,
-        userData: userInfo,
-        responsibilityLevel: responsibilityLevel,
-      };
-    } else {
-      // If assessment was skipped, only use userInfo and responsibilityLevel
-      assessmentData = {
-        ratings: [],
-        userData: userInfo,
-        responsibilityLevel: responsibilityLevel,
-      };
-    }
+    let assessmentData = {
+      userData: userInfo,
+      responsibilityLevel: responsibilityLevel,
+      assessmentCompleted: assessmentCompleted,
+      ratings: assessmentCompleted ? answers : [],
+    };
 
     const developmentPlan = await generateDevelopmentPlan(assessmentData);
 

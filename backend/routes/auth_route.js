@@ -6,15 +6,17 @@ import {
   handleLogout,
   handleRequestPasswordReset,
   handleConfirmPasswordReset,
+  handleGetProfile,
 } from "../controller/auth_controller.js";
-import { protect } from "../middleware/authMiddleware.js";
+import { authMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
 
 router.post("/register", handleRegister);
 router.post("/login", handleLogin);
-router.put("/profile", protect, handleUpdateProfile);
-router.post("/logout", protect, handleLogout);
+router.get("/profile", authMiddleware, handleGetProfile);
+router.put("/profile", authMiddleware, handleUpdateProfile);
+router.post("/logout", authMiddleware, handleLogout);
 router.post("/request-password-reset", handleRequestPasswordReset);
 router.post("/confirm-password-reset", handleConfirmPasswordReset);
 

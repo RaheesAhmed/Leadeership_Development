@@ -1,14 +1,16 @@
 import { responsibilityLevelsData } from "./dataLoader.js";
+import logger from "../utils/logger.js";
 
 export async function classifyResponsibilityLevel(demographicInfo) {
-  console.log("Classifying responsibility level for:", demographicInfo);
-  console.log("Responsibility Levels Data:", responsibilityLevelsData);
+  logger.info("Classifying responsibility level for:", demographicInfo);
+  logger.info("Responsibility Levels Data:", responsibilityLevelsData);
 
   if (
     !responsibilityLevelsData ||
     !Array.isArray(responsibilityLevelsData) ||
     responsibilityLevelsData.length === 0
   ) {
+    logger.error("Responsibility levels data not loaded or empty");
     throw new Error("Responsibility levels data not loaded or empty");
   }
 
@@ -27,7 +29,13 @@ export async function classifyResponsibilityLevel(demographicInfo) {
   } = demographicInfo;
 
   // Check if required fields are present
-  if (!jobTitle || !decisionLevel || !directReports || !levelsToCEO) {
+  if (
+    !jobTitle ||
+    !decisionLevel ||
+    directReports === undefined ||
+    levelsToCEO === undefined
+  ) {
+    logger.error("Missing required demographic information", demographicInfo);
     throw new Error("Missing required demographic information");
   }
 
@@ -56,6 +64,8 @@ export async function classifyResponsibilityLevel(demographicInfo) {
   score += (managesBudget ? 1 : 0) * weights.managesBudget;
   score += Math.min(companySize / 1000, 1) * weights.companySize;
 
+  logger.info("Calculated score:", score);
+
   // Map the score to responsibility levels
   const levels = [
     "Individual Contributor",
@@ -76,6 +86,8 @@ export async function classifyResponsibilityLevel(demographicInfo) {
   );
   const classifiedLevel = levels[levelIndex];
 
+  logger.info("Classified level:", classifiedLevel);
+
   // Find the matching level in responsibilityLevelsData
   const matchedLevel = responsibilityLevelsData.find(
     (level) =>
@@ -83,10 +95,14 @@ export async function classifyResponsibilityLevel(demographicInfo) {
   );
 
   if (!matchedLevel) {
+    logger.error("Unable to find matching responsibility level", {
+      classifiedLevel,
+      responsibilityLevelsData,
+    });
     throw new Error("Unable to find matching responsibility level");
   }
 
-  return {
+  const result = {
     role: classifiedLevel,
     level: levelIndex,
     description: matchedLevel.Description,
@@ -95,4 +111,7 @@ export async function classifyResponsibilityLevel(demographicInfo) {
       "v2.0": matchedLevel["v2.0"],
     },
   };
+
+  logger.info("Classification result:", result);
+  return result;
 }

@@ -34,6 +34,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Question, FormData } from "@/types/types";
+import JourneyText from "@/components/JourneyText";
 
 const icons = {
   name: User,
@@ -57,7 +58,7 @@ const DemographicForm: React.FC<DemographicFormProps> = ({
   demographicQuestions,
   onSubmit,
 }) => {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(-1); // Start at -1 to show JourneyText first
   const [formData, setFormData] = useState<FormData>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -74,7 +75,7 @@ const DemographicForm: React.FC<DemographicFormProps> = ({
   };
 
   const handlePrevious = () => {
-    if (currentStep > 0) {
+    if (currentStep > -1) {
       setCurrentStep((prev) => prev - 1);
     }
   };
@@ -174,7 +175,8 @@ const DemographicForm: React.FC<DemographicFormProps> = ({
 
   const currentQuestion = demographicQuestions[currentStep];
   const IconComponent =
-    icons[currentQuestion.id as keyof typeof icons] || ClipboardList;
+    (currentStep >= 0 && icons[currentQuestion.id as keyof typeof icons]) ||
+    ClipboardList;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary flex items-center justify-center p-4">
@@ -191,41 +193,53 @@ const DemographicForm: React.FC<DemographicFormProps> = ({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col md:flex-row">
-            <div className="md:w-1/2 p-6 border-r border-gray-200 dark:border-gray-700">
+            <div className="w-full p-6">
               <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentStep}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <h2 className="text-sm font-semibold mb-4">
-                    {currentQuestion.question}
-                  </h2>
-                  {renderQuestion(currentQuestion)}
-                </motion.div>
+                {currentStep === -1 ? (
+                  <motion.div
+                    key="journey-text"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full"
+                  >
+                    <JourneyText />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key={currentStep}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex flex-col md:flex-row"
+                  >
+                    <div className="md:w-1/2 pr-6">
+                      <h2 className="text-sm font-semibold mb-4">
+                        {currentQuestion.question}
+                      </h2>
+                      {renderQuestion(currentQuestion)}
+                    </div>
+                    <div className="md:w-1/2 flex flex-col items-center justify-center mt-6 md:mt-0">
+                      <motion.div
+                        key={currentQuestion.id}
+                        initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
+                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, rotate: 10 }}
+                        transition={{
+                          duration: 0.5,
+                          type: "spring",
+                          stiffness: 100,
+                        }}
+                        className="mb-6"
+                      >
+                        <IconComponent className="w-32 h-32 text-primary" />
+                      </motion.div>
+                    </div>
+                  </motion.div>
+                )}
               </AnimatePresence>
-            </div>
-            <div className="md:w-1/2 p-6 flex flex-col items-center justify-center">
-              <motion.div
-                key={currentQuestion.id}
-                initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.8, rotate: 10 }}
-                transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
-                className="mb-6"
-              >
-                <IconComponent className="w-32 h-32 text-primary" />
-              </motion.div>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.3 }}
-                className="text-center text-muted-foreground"
-              >
-                {currentQuestion.placeholder}
-              </motion.p>
             </div>
           </form>
         </CardContent>
@@ -237,21 +251,26 @@ const DemographicForm: React.FC<DemographicFormProps> = ({
                 initial={{ width: 0 }}
                 animate={{
                   width: `${
-                    ((currentStep + 1) / demographicQuestions.length) * 100
+                    ((currentStep + 2) / (demographicQuestions.length + 1)) *
+                    100
                   }%`,
                 }}
                 transition={{ duration: 0.3 }}
               />
             </div>
             <p className="text-center text-sm text-muted-foreground">
-              Question {currentStep + 1} of {demographicQuestions.length}
+              {currentStep === -1
+                ? "Introduction"
+                : `Question ${currentStep + 1} of ${
+                    demographicQuestions.length
+                  }`}
             </p>
           </div>
           <div className="flex justify-between w-full max-w-md">
             <Button
               type="button"
               onClick={handlePrevious}
-              disabled={currentStep === 0}
+              disabled={currentStep <= -1}
               variant="outline"
               className="w-28"
             >
@@ -261,7 +280,9 @@ const DemographicForm: React.FC<DemographicFormProps> = ({
               type="button"
               onClick={handleNext}
               disabled={
-                isSubmitting || !formData[demographicQuestions[currentStep].id]
+                isSubmitting ||
+                (currentStep >= 0 &&
+                  !formData[demographicQuestions[currentStep].id])
               }
               className="w-28"
             >

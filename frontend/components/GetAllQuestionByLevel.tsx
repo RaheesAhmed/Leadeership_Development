@@ -209,7 +209,6 @@ const GetAllQuestionByLevel: React.FC<GetAllQuestionByLevelProps> = ({
 
     try {
       await onComplete(allAnswers);
-      router.push("/results"); // Adjust the route as needed
     } catch (error) {
       console.error("Error submitting assessment:", error);
       setError(

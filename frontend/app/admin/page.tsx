@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Upload,
   FileText,
   AlertCircle,
-  Home,
-  Settings,
-  LogOut,
+  Users,
+  CreditCard,
+  ClipboardList,
+  Briefcase,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,13 +22,32 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipProvider,
-} from "@/components/ui/tooltip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface AdminStats {
+  usersCount: number;
+  activeSubscriptions: number;
+  assessmentsCount: number;
+  consultantsCount: number;
+}
+
+interface RecentActivity {
+  recentUsers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    created_at: string;
+  }>;
+  recentAssessments: Array<{
+    id: string;
+    created_at: string;
+    users: {
+      name: string;
+      email: string;
+    };
+  }>;
+}
 
 export default function AdminDashboard() {
   const [file, setFile] = useState<File | null>(null);
@@ -36,6 +56,37 @@ export default function AdminDashboard() {
     null
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [activity, setActivity] = useState<RecentActivity | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAdminData = async () => {
+      try {
+        const [statsResponse, activityResponse] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/stats`),
+          fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/activity`),
+        ]);
+
+        if (!statsResponse.ok || !activityResponse.ok) {
+          throw new Error("Failed to fetch admin data");
+        }
+
+        const statsData = await statsResponse.json();
+        const activityData = await activityResponse.json();
+
+        setStats(statsData);
+        setActivity(activityData);
+      } catch (error) {
+        console.error("Error fetching admin data:", error);
+        setErrorMessage("Failed to load admin dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdminData();
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -55,7 +106,7 @@ export default function AdminDashboard() {
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL;
-      const response = await fetch(`${apiUrl}/api/upload-training`, {
+      const response = await fetch(`${apiUrl}/api/admin/upload-training`, {
         method: "POST",
         body: formData,
       });
@@ -77,121 +128,188 @@ export default function AdminDashboard() {
     }
   };
 
+  const StatCard = ({
+    title,
+    value,
+    icon: Icon,
+  }: {
+    title: string;
+    value: number;
+    icon: any;
+  }) => (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">
+          {loading ? <Skeleton className="h-8 w-20" /> : value}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <TooltipProvider>
-      <div className="flex min-h-screen w-full bg-muted/40">
-        <aside className="fixed inset-y-0 left-0 z-10 w-16 flex-col border-r bg-background hidden sm:flex">
-          <nav className="flex flex-col items-center gap-4 p-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full"
-                  aria-label="Dashboard"
-                >
-                  <Home className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Dashboard</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full"
-                  aria-label="Settings"
-                >
-                  <Settings className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Settings</TooltipContent>
-            </Tooltip>
-          </nav>
-          <div className="mt-auto p-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full"
-                  aria-label="Log out"
-                >
-                  <LogOut className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Log out</TooltipContent>
-            </Tooltip>
-          </div>
-        </aside>
-        <main className="flex-1 p-6 sm:ml-16">
-          <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-          <Card className="w-full max-w-2xl mx-auto">
+    <div className="min-h-screen w-full bg-muted/40">
+      <main className="container mx-auto p-6">
+        <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+
+        {/* Stats Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+          <StatCard
+            title="Total Users"
+            value={stats?.usersCount ?? 0}
+            icon={Users}
+          />
+          <StatCard
+            title="Active Subscriptions"
+            value={stats?.activeSubscriptions ?? 0}
+            icon={CreditCard}
+          />
+          <StatCard
+            title="Total Assessments"
+            value={stats?.assessmentsCount ?? 0}
+            icon={ClipboardList}
+          />
+          <StatCard
+            title="Consultants"
+            value={stats?.consultantsCount ?? 0}
+            icon={Briefcase}
+          />
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Recent Activity */}
+          <Card className="h-full">
             <CardHeader>
-              <CardTitle>Upload Training File</CardTitle>
-              <CardDescription>
-                Upload a new training file to update the AI model.
-              </CardDescription>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Latest users and assessments</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor="file">Training File</Label>
-                <Input
-                  id="file"
-                  type="file"
-                  onChange={handleFileChange}
-                  accept=".csv,.txt,.json"
-                />
-              </div>
-              {file && (
-                <p className="mt-2 text-sm text-muted-foreground flex items-center">
-                  <FileText className="mr-2 h-4 w-4" />
-                  {file.name}
-                </p>
+              {loading ? (
+                <div className="space-y-2">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold mb-2">Recent Users</h3>
+                    <div className="space-y-2">
+                      {activity?.recentUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span>{user.name}</span>
+                          <span className="text-muted-foreground">
+                            {new Date(user.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-2">Recent Assessments</h3>
+                    <div className="space-y-2">
+                      {activity?.recentAssessments.map((assessment) => (
+                        <div
+                          key={assessment.id}
+                          className="flex items-center justify-between text-sm"
+                        >
+                          <span>{assessment.users.name}</span>
+                          <span className="text-muted-foreground">
+                            {new Date(
+                              assessment.created_at
+                            ).toLocaleDateString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               )}
             </CardContent>
-            <CardFooter>
-              <Button onClick={handleUpload} disabled={!file || uploading}>
-                {uploading ? (
-                  <>
-                    <Upload className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload File
-                  </>
-                )}
-              </Button>
-            </CardFooter>
           </Card>
-          {(uploadStatus || errorMessage) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="mt-4 w-full max-w-2xl mx-auto"
-            >
-              <Alert
-                variant={uploadStatus === "success" ? "default" : "destructive"}
+
+          {/* Upload Training File */}
+          <div className="space-y-4">
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle>Upload Training File</CardTitle>
+                <CardDescription>
+                  Upload a new training file to update the AI model.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid w-full items-center gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="file">Training File</Label>
+                    <Input
+                      id="file"
+                      type="file"
+                      onChange={handleFileChange}
+                      accept=".csv,.txt,.json"
+                      className="h-full py-2"
+                    />
+                  </div>
+                  {file && (
+                    <p className="text-sm text-muted-foreground flex items-center">
+                      <FileText className="mr-2 h-4 w-4" />
+                      {file.name}
+                    </p>
+                  )}
+                  <Button
+                    onClick={handleUpload}
+                    disabled={!file || uploading}
+                    className="w-full"
+                  >
+                    {uploading ? (
+                      <>
+                        <Upload className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload File
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Status Messages */}
+            {(uploadStatus || errorMessage) && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
               >
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>
-                  {uploadStatus === "success" ? "Success" : "Error"}
-                </AlertTitle>
-                <AlertDescription>
-                  {uploadStatus === "success"
-                    ? "The training file was uploaded successfully."
-                    : errorMessage ||
-                      "There was an error uploading the file. Please try again."}
-                </AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
-        </main>
-      </div>
-    </TooltipProvider>
+                <Alert
+                  variant={
+                    uploadStatus === "success" ? "default" : "destructive"
+                  }
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>
+                    {uploadStatus === "success" ? "Success" : "Error"}
+                  </AlertTitle>
+                  <AlertDescription>
+                    {uploadStatus === "success"
+                      ? "The training file was uploaded successfully."
+                      : errorMessage ||
+                        "There was an error uploading the file. Please try again."}
+                  </AlertDescription>
+                </Alert>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

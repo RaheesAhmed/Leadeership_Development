@@ -1,45 +1,43 @@
 import jwt from "jsonwebtoken";
 import { supabaseClient } from "../lib/supabaseClient.js";
+import logger from "../utils/logger.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export const protect = async (req, res, next) => {
-  let token;
+  try {
+    // Get token from header or cookies
+    let token = req.headers.authorization?.replace("Bearer ", "");
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    try {
-      // Get token from header
-      token = req.headers.authorization.split(" ")[1];
-
-      // Verify token
-      const decoded = jwt.verify(token, JWT_SECRET);
-
-      // Get user from the token
-      const { data: user, error } = await supabaseClient
-        .from("users")
-        .select("id, name, email, role, department")
-        .eq("id", decoded.id)
-        .single();
-
-      if (error || !user) {
-        res.status(401);
-        throw new Error("Not authorized");
-      }
-
-      req.user = user;
-      next();
-    } catch (error) {
-      console.error(error);
-      res.status(401);
-      throw new Error("Not authorized");
+    if (!token && req.cookies) {
+      token = req.cookies.token;
     }
-  }
 
-  if (!token) {
-    res.status(401);
-    throw new Error("Not authorized, no token");
+    if (!token) {
+      logger.error("No token provided");
+      return res.status(401).json({ message: "Not authorized, no token" });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    // Get user from database
+    const { data: user, error } = await supabaseClient
+      .from("users")
+      .select("*")
+      .eq("id", decoded.id)
+      .single();
+
+    if (error || !user) {
+      logger.error("User not found or unauthorized");
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
+    // Attach user to request object
+    req.user = user;
+    next();
+  } catch (error) {
+    logger.error("Auth middleware error:", error);
+    return res.status(401).json({ message: "Not authorized" });
   }
 };

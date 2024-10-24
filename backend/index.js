@@ -20,22 +20,38 @@ import assistantRoute from "./routes/assistant_route.js";
 import multiRaterRoute from "./routes/multi_rater_route.js";
 import dashboardRoute from "./routes/dashboard_route.js";
 import authRoute from "./routes/auth_route.js";
+import cookieParser from "cookie-parser";
+import subscriptionRoute from "./routes/subscription_route.js";
+import consultantRoute from "./routes/consultant_route.js";
+import adminRoute from "./routes/admin_route.js";
+
 dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+// CORS configuration
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "http://localhost:3000", // Allow requests from the frontend
+  optionsSuccessStatus: 200,
+  credentials: true, // Important for cookies
+};
+
 // Middleware
+app.use(cors(corsOptions)); // Use the CORS middleware with our configuration
 app.use(helmet());
-app.use(cors());
 app.use(express.json());
 app.use(compression()); // Add compression
+app.use(cookieParser());
 
-// Rate limiting
-// const limiter = rateLimit({
-//   windowMs: 15 * 60 * 1000, // 15 minutes
-//   max: 100, // limit each IP to 100 requests per windowMs
-// });
-// app.use(limiter);
+// //Cache middleware
+// app.use(cacheMiddleware);
+
+// //Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
 
 // Mount routes
 app.use("/api/chat", chatRoute);
@@ -49,6 +65,9 @@ app.use("/api/assistant", assistantRoute);
 app.use("/api/multi-rater", multiRaterRoute);
 app.use("/api/dashboard", dashboardRoute);
 app.use("/api/auth", authRoute);
+app.use("/api/subscriptions", subscriptionRoute);
+app.use("/api/consultants", consultantRoute);
+app.use("/api/admin", adminRoute);
 
 // API documentation route
 app.get("/", (req, res) => {
@@ -64,6 +83,10 @@ app.get("/", (req, res) => {
       "Get questions about assessment by level",
     "/api/generate-development-plan": "Generate development plan",
     "/api/assessment/demographic": "Get demographic questions",
+    "/api/assistant": "Interact with the AI assistant",
+    "/api/multi-rater": "Handle multi-rater assessments",
+    "/api/dashboard": "Access dashboard data",
+    "/api/auth": "Handle authentication",
   };
   res.json({ apiDocs });
 });

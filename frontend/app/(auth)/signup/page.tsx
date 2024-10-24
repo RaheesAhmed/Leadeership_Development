@@ -23,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -31,33 +33,22 @@ export default function SignupPage() {
   const [role, setRole] = useState("");
   const [department, setDepartment] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { register } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth/register`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password, role, department }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        // Store the token securely (e.g., in HttpOnly cookie)
-        document.cookie = `token=${data.token}; path=/; secure; HttpOnly`;
-        router.push("/dashboard");
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || "An error occurred during signup");
-      }
+      await register({ name, email, password, role, department });
+      router.push("/dashboard");
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      setError("An error occurred during signup");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -142,8 +133,19 @@ export default function SignupPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" className="w-full gradient-bg text-white">
-              Sign Up
+            <Button
+              type="submit"
+              className="w-full gradient-bg text-white"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Spinner className="mr-2" />
+                  Signing up...
+                </>
+              ) : (
+                "Sign Up"
+              )}
             </Button>
           </form>
         </CardContent>
