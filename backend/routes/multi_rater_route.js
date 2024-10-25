@@ -1,14 +1,15 @@
-import { createRouter } from "../lib/routerLib.js";
+import express from "express";
+import { requireAuth } from "../middleware/authMiddleware.js";
 import {
   handleCreateAssessment,
   handleAddRating,
   handleGenerateMultiRaterPlan,
 } from "../controller/multi_rater_controller.js";
 
-const router = createRouter();
+const router = express.Router();
 
-router.post("/create", handleCreateAssessment);
-router.post("/rate", handleAddRating);
-router.get("/generate-plan/:assessmentId", handleGenerateMultiRaterPlan);
+router.post("/assessment", requireAuth, handleCreateAssessment);
+router.post("/rating", requireAuth, handleAddRating);
+router.get("/plan/:assessmentId", requireAuth, handleGenerateMultiRaterPlan);
 
 export default router;

@@ -1,9 +1,9 @@
-import { createRouter } from "../lib/routerLib.js";
+import express from "express";
+import { requireAuth } from "../middleware/authMiddleware.js";
 import { handleGetDashboardData } from "../controller/dashboard_controller.js";
-import { protect } from "../middleware/authMiddleware.js";
 
-const router = createRouter();
+const router = express.Router();
 
-router.get("/", protect, handleGetDashboardData);
+router.get("/", requireAuth, handleGetDashboardData);
 
 export default router;

@@ -5,21 +5,19 @@ import {
   logoutUser,
 } from "../services/auth_service.js";
 import { supabaseClient } from "../lib/supabaseClient.js";
+import logger from "../utils/logger.js";
 
 export const handleRegister = async (req, res) => {
   try {
-    const { name, email, password, role, department } = req.body;
-    const result = await registerUser(name, email, password, role, department);
-    res.status(201).json(result);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
+    const { name, email, password, role = "user", department } = req.body;
 
-export const handleLogin = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const result = await loginUser(email, password);
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        error: "Name, email and password are required",
+      });
+    }
+
+    const result = await registerUser(name, email, password, role, department);
 
     // Set the token as an HTTP-only cookie
     res.cookie("token", result.token, {
@@ -29,9 +27,39 @@ export const handleLogin = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
 
-    res.json(result);
+    res.status(201).json(result);
   } catch (error) {
-    res.status(401).json({ error: error.message });
+    logger.error("Registration error:", error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const handleLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    const result = await loginUser(email, password);
+
+    // Set the token as an HTTP-only cookie
+    res.cookie("token", result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: "/", // Add this to ensure cookie is available for all paths
+    });
+
+    // Return user data
+    res.json({
+      user: result.user,
+    });
+  } catch (error) {
+    logger.error("Login error:", error);
+    res.status(401).json({ error: error.message || "Invalid credentials" });
   }
 };
 
@@ -40,52 +68,36 @@ export const handleUpdateProfile = async (req, res) => {
     const userId = req.user.id;
     const { name, department } = req.body;
 
-    // Validate input
     if (!name || !department) {
-      return res
-        .status(400)
-        .json({ error: "Name and department are required" });
+      return res.status(400).json({
+        error: "Name and department are required",
+      });
     }
 
-    // Update user profile in database
-    const { data: updatedUser, error } = await supabaseClient
-      .from("users")
-      .update({
-        name,
-        department,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId)
-      .single();
-
-    if (error) {
-      console.error("Error updating user profile:", error);
-      return res.status(500).json({ error: "Failed to update profile" });
-    }
+    const updatedUser = await updateUserProfile(userId, { name, department });
 
     res.json({
       message: "Profile updated successfully",
-      user: {
-        id: updatedUser.id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        department: updatedUser.department,
-      },
+      user: updatedUser,
     });
   } catch (error) {
-    console.error("Error in handleUpdateProfile:", error);
-    res.status(500).json({ error: "Internal server error" });
+    logger.error("Profile update error:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
 export const handleLogout = async (req, res) => {
   try {
     const userId = req.user.id;
-    const result = await logoutUser(userId);
-    res.json(result);
+    await logoutUser(userId);
+
+    // Clear the auth cookie
+    res.clearCookie("token");
+
+    res.json({ message: "Logged out successfully" });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    logger.error("Logout error:", error);
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -113,7 +125,6 @@ export const handleGetProfile = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Fetch user data from the database
     const { data: userData, error } = await supabaseClient
       .from("users")
       .select("*")
@@ -121,7 +132,7 @@ export const handleGetProfile = async (req, res) => {
       .single();
 
     if (error) {
-      console.error("Error fetching user profile:", error);
+      logger.error("Error fetching user profile:", error);
       return res.status(500).json({ error: "Error fetching user profile" });
     }
 
@@ -139,7 +150,7 @@ export const handleGetProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error in handleGetProfile:", error);
+    logger.error("Error in handleGetProfile:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 };

@@ -24,6 +24,7 @@ import cookieParser from "cookie-parser";
 import subscriptionRoute from "./routes/subscription_route.js";
 import consultantRoute from "./routes/consultant_route.js";
 import adminRoute from "./routes/admin_route.js";
+import devPlanRouter from "./routes/devplan_route.js";
 
 dotenv.config();
 const app = express();
@@ -47,11 +48,11 @@ app.use(cookieParser());
 // app.use(cacheMiddleware);
 
 // //Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-});
-app.use(limiter);
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // limit each IP to 100 requests per windowMs
+// });
+// app.use(limiter);
 
 // Mount routes
 app.use("/api/chat", chatRoute);
@@ -68,6 +69,7 @@ app.use("/api/auth", authRoute);
 app.use("/api/subscriptions", subscriptionRoute);
 app.use("/api/consultants", consultantRoute);
 app.use("/api/admin", adminRoute);
+app.use("/api/development-plan", devPlanRouter);
 
 // API documentation route
 app.get("/", (req, res) => {
@@ -87,10 +89,12 @@ app.get("/", (req, res) => {
     "/api/multi-rater": "Handle multi-rater assessments",
     "/api/dashboard": "Access dashboard data",
     "/api/auth": "Handle authentication",
+    "/api/admin": "Handle admin operations",
+    "/api/import-data": "Import assessment data",
+    "/api/development-plan": "Handle development plan operations",
   };
   res.json({ apiDocs });
 });
-
 // Error handling middleware
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -1,33 +1,39 @@
-import jwt from "jsonwebtoken";
+import { supabaseClient } from "../lib/supabaseClient.js";
+import logger from "../utils/logger.js";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-export const authMiddleware = (req, res, next) => {
-  const token = req.header("Authorization")?.replace("Bearer ", "");
-
-  if (!token) {
-    return res.status(401).json({ error: "No token, authorization denied" });
-  }
-
+const auth = async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    // Check for token in cookies first
+    let token = req.cookies.token;
+
+    // If no token in cookies, check Authorization header
+    if (!token && req.headers.authorization) {
+      token = req.headers.authorization.replace("Bearer ", "");
+    }
+
+    if (!token) {
+      logger.error("No token provided");
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    // Verify token with Supabase
+    const {
+      data: { user },
+      error,
+    } = await supabaseClient.auth.getUser(token);
+
+    if (error || !user) {
+      logger.error("User not found or unauthorized");
+      throw error || new Error("User not found");
+    }
+
+    // Attach user to request object
+    req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ error: "Token is not valid" });
+    logger.error("Auth middleware error:", error);
+    res.status(401).json({ message: "Authentication failed" });
   }
 };
 
-export const roleMiddleware = (allowedRoles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({ error: "User not authenticated" });
-    }
-
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ error: "Access denied" });
-    }
-
-    next();
-  };
-};
+export default auth;
