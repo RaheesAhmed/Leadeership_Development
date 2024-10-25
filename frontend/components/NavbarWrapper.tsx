@@ -9,17 +9,18 @@ export default function NavbarWrapper({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const pathname = usePathname();
 
   // List of paths where we don't want to show the navbar
-  const noNavbarPaths = ["/login", "/signup", "/"];
+  const noNavbarPaths = ["/login", "/signup", "/admin"];
 
-  const shouldShowNavbar = isAuthenticated && !noNavbarPaths.includes(pathname);
+  // Show navbar if authenticated and not on excluded paths
+  const shouldShowNavbar = !noNavbarPaths.includes(pathname);
 
   return (
     <>
-      {shouldShowNavbar && <Navbar />}
+      {!isLoading && shouldShowNavbar && <Navbar />}
       {children}
     </>
   );

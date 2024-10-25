@@ -42,7 +42,5 @@ export const config = {
     "/admin/:path*",
     "/profile/:path*",
     "/assessment/:path*",
-    "/login",
-    "/signup",
   ],
 };

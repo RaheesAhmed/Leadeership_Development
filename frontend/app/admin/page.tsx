@@ -10,6 +10,12 @@ import {
   CreditCard,
   ClipboardList,
   Briefcase,
+  ChevronRight,
+  Calendar,
+  BarChart,
+  DollarSign,
+  UserPlus,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +32,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Progress } from "@/components/ui/progress";
 
 interface AdminStats {
   usersCount: number;
@@ -51,7 +66,7 @@ interface RecentActivity {
   }>;
 }
 
-export default function AdminDashboard() {
+export default function Component() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<"success" | "error" | null>(
@@ -68,25 +83,53 @@ export default function AdminDashboard() {
     Record<string, number>
   >({});
   const router = useRouter();
-  const { adminLogout } = useAdminAuth();
+  const { adminLogout, isAdminAuthenticated } = useAdminAuth();
+
+  const [userGrowth, setUserGrowth] = useState<Record<string, number>>({});
+  const [revenueStats, setRevenueStats] = useState<{
+    total: number;
+    monthly: number;
+    growth: number;
+  }>({ total: 0, monthly: 0, growth: 0 });
 
   useEffect(() => {
     const fetchAdminData = async () => {
       try {
+        // Add authorization header to all requests
+        const headers = {
+          Authorization: `Bearer ${
+            document.cookie.split("token=")[1]?.split(";")[0]
+          }`,
+        };
+
         const [
           statsResponse,
           activityResponse,
           subscriptionResponse,
           assessmentResponse,
+          userGrowthResponse,
+          revenueResponse,
         ] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/stats`),
-          fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/activity`),
+          fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/stats`, {
+            headers,
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/activity`, {
+            headers,
+          }),
           fetch(
-            `${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/subscription-stats`
+            `${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/subscription-stats`,
+            { headers }
           ),
           fetch(
-            `${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/assessment-stats`
+            `${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/assessment-stats`,
+            { headers }
           ),
+          fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/user-growth`, {
+            headers,
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/revenue`, {
+            headers,
+          }),
         ]);
 
         if (
@@ -102,11 +145,15 @@ export default function AdminDashboard() {
         const activityData = await activityResponse.json();
         const subscriptionData = await subscriptionResponse.json();
         const assessmentData = await assessmentResponse.json();
+        const userGrowthData = await userGrowthResponse.json();
+        const revenueData = await revenueResponse.json();
 
         setStats(statsData);
         setActivity(activityData);
         setSubscriptionStats(subscriptionData);
         setAssessmentStats(assessmentData);
+        setUserGrowth(userGrowthData);
+        setRevenueStats(revenueData);
       } catch (error) {
         console.error("Error fetching admin data:", error);
         setErrorMessage("Failed to load admin dashboard data");
@@ -115,8 +162,11 @@ export default function AdminDashboard() {
       }
     };
 
-    fetchAdminData();
-  }, []);
+    // Only fetch if we're authenticated
+    if (isAdminAuthenticated) {
+      fetchAdminData();
+    }
+  }, [isAdminAuthenticated]); // Add isAdminAuthenticated to dependencies
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
@@ -135,11 +185,13 @@ export default function AdminDashboard() {
     formData.append("file", file);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL;
-      const response = await fetch(`${apiUrl}/api/admin/upload-training`, {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/upload-training`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -166,66 +218,148 @@ export default function AdminDashboard() {
     title,
     value,
     icon: Icon,
+    trend,
   }: {
     title: string;
     value: number;
     icon: any;
+    trend: string;
   }) => (
-    <Card>
+    <Card className="bg-white shadow-md hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold">
-          {loading ? <Skeleton className="h-8 w-20" /> : value}
+          {loading ? <Skeleton className="h-8 w-20" /> : value.toLocaleString()}
         </div>
+        <p className="text-xs text-muted-foreground mt-1">{trend}</p>
       </CardContent>
     </Card>
   );
 
   return (
-    <div className="min-h-screen w-full bg-muted/40">
-      <main className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <Button onClick={handleAdminLogout} variant="outline">
-            Logout
-          </Button>
+    <div className="min-h-screen w-full bg-gray-50">
+      <header className="bg-white shadow-sm">
+        <div className="container mx-auto px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                Admin Dashboard
+              </h1>
+              <p className="text-sm text-gray-500">Welcome back, Admin</p>
+            </div>
+            <Button onClick={handleAdminLogout} variant="outline">
+              Logout
+            </Button>
+          </div>
         </div>
+      </header>
 
-        {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+      <main className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <StatCard
             title="Total Users"
             value={stats?.usersCount ?? 0}
             icon={Users}
+            trend="+12% from last month"
           />
           <StatCard
             title="Active Subscriptions"
             value={stats?.activeSubscriptions ?? 0}
             icon={CreditCard}
+            trend="+5% from last month"
           />
           <StatCard
             title="Total Assessments"
             value={stats?.assessmentsCount ?? 0}
             icon={ClipboardList}
+            trend="+8% from last month"
           />
           <StatCard
             title="Consultants"
             value={stats?.consultantsCount ?? 0}
             icon={Briefcase}
+            trend="+3% from last month"
           />
         </div>
 
-        {/* Add Subscription Stats */}
-        <div className="grid gap-6 md:grid-cols-2 mb-6">
-          <Card>
+        <div className="grid gap-6 md:grid-cols-2 mb-8">
+          <Card className="bg-white shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardHeader>
-              <CardTitle>Subscription Distribution</CardTitle>
-              <CardDescription>
-                Active subscriptions by plan type
-              </CardDescription>
+              <CardTitle className="text-lg font-semibold">
+                Revenue Overview
+              </CardTitle>
+              <CardDescription>Monthly revenue and growth</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Total Revenue
+                    </p>
+                    <p className="text-2xl font-bold">
+                      ${revenueStats.total.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Monthly Growth
+                    </p>
+                    <p className="text-2xl font-bold text-green-600">
+                      +{revenueStats.growth}%
+                    </p>
+                  </div>
+                </div>
+                <Progress value={revenueStats.growth} className="h-2" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white shadow-md hover:shadow-lg transition-shadow duration-300">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold">
+                User Growth
+              </CardTitle>
+              <CardDescription>New user registrations by month</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Object.entries(userGrowth).map(([month, count]) => (
+                  <div
+                    key={month}
+                    className="flex items-center justify-between"
+                  >
+                    <span className="text-sm text-muted-foreground">
+                      {month}
+                    </span>
+                    <div className="flex items-center">
+                      <span className="font-semibold">{count}</span>
+                      <UserPlus className="ml-2 h-4 w-4 text-green-500" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 mb-8">
+          <Card className="bg-white shadow-md hover:shadow-lg transition-shadow duration-300">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-lg font-semibold">
+                    Subscription Distribution
+                  </CardTitle>
+                  <CardDescription>
+                    Active subscriptions by plan type
+                  </CardDescription>
+                </div>
+                <BarChart className="h-5 w-5 text-muted-foreground" />
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -234,12 +368,17 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                   {Object.entries(subscriptionStats || {}).map(
                     ([plan, count]) => (
-                      <div
-                        key={plan}
-                        className="flex items-center justify-between"
-                      >
-                        <span className="capitalize">{plan}</span>
-                        <span className="font-bold">{count}</span>
+                      <div key={plan} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="capitalize font-medium text-sm">
+                            {plan}
+                          </span>
+                          <span className="font-semibold">{count}</span>
+                        </div>
+                        <Progress
+                          value={(count / stats?.activeSubscriptions!) * 100}
+                          className="h-2"
+                        />
                       </div>
                     )
                   )}
@@ -248,10 +387,19 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardHeader>
-              <CardTitle>Assessment Trends</CardTitle>
-              <CardDescription>Monthly assessment completions</CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-lg font-semibold">
+                    Assessment Trends
+                  </CardTitle>
+                  <CardDescription>
+                    Monthly assessment completions
+                  </CardDescription>
+                </div>
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -260,12 +408,19 @@ export default function AdminDashboard() {
                 <div className="space-y-4">
                   {Object.entries(assessmentStats || {}).map(
                     ([month, count]) => (
-                      <div
-                        key={month}
-                        className="flex items-center justify-between"
-                      >
-                        <span>{month}</span>
-                        <span className="font-bold">{count}</span>
+                      <div key={month} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm">{month}</span>
+                          <span className="font-semibold">{count}</span>
+                        </div>
+                        <Progress
+                          value={
+                            (count /
+                              Math.max(...Object.values(assessmentStats))) *
+                            100
+                          }
+                          className="h-2"
+                        />
                       </div>
                     )
                   )}
@@ -276,11 +431,22 @@ export default function AdminDashboard() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Recent Activity */}
-          <Card className="h-full">
+          <Card className="bg-white shadow-md hover:shadow-lg transition-shadow duration-300">
             <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest users and assessments</CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-lg font-semibold">
+                    Recent Activity
+                  </CardTitle>
+                  <CardDescription>
+                    Latest users and assessments
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm">
+                  View All
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -290,51 +456,72 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   <div>
-                    <h3 className="font-semibold mb-2">Recent Users</h3>
-                    <div className="space-y-2">
-                      {activity?.recentUsers.map((user) => (
-                        <div
-                          key={user.id}
-                          className="flex items-center justify-between text-sm"
-                        >
-                          <span>{user.name}</span>
-                          <span className="text-muted-foreground">
-                            {new Date(user.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    <h3 className="font-semibold mb-2 text-sm">Recent Users</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {activity?.recentUsers.map((user) => (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-medium">
+                              {user.name}
+                            </TableCell>
+
+                            <TableCell>{user.email}</TableCell>
+                            <TableCell>
+                              {new Date(user.created_at).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
+
                   <div>
-                    <h3 className="font-semibold mb-2">Recent Assessments</h3>
-                    <div className="space-y-2">
-                      {activity?.recentAssessments.map((assessment) => (
-                        <div
-                          key={assessment.id}
-                          className="flex items-center justify-between text-sm"
-                        >
-                          <span>{assessment.users.name}</span>
-                          <span className="text-muted-foreground">
-                            {new Date(
-                              assessment.created_at
-                            ).toLocaleDateString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    <h3 className="font-semibold mb-2 text-sm">
+                      Recent Assessments
+                    </h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>User</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {activity?.recentAssessments.map((assessment) => (
+                          <TableRow key={assessment.id}>
+                            <TableCell className="font-medium">
+                              {assessment.users.name}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(
+                                assessment.created_at
+                              ).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Upload Training File */}
           <div className="space-y-4">
-            <Card className="h-full">
+            <Card className="bg-white shadow-md hover:shadow-lg transition-shadow duration-300">
               <CardHeader>
-                <CardTitle>Upload Training File</CardTitle>
+                <CardTitle className="text-lg font-semibold">
+                  Upload Training File
+                </CardTitle>
                 <CardDescription>
                   Upload a new training file to update the AI model.
                 </CardDescription>
@@ -378,7 +565,6 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
 
-            {/* Status Messages */}
             {(uploadStatus || errorMessage) && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

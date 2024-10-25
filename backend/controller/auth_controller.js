@@ -44,17 +44,9 @@ export const handleLogin = async (req, res) => {
 
     const result = await loginUser(email, password);
 
-    // Set the token as an HTTP-only cookie
-    res.cookie("token", result.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      path: "/", // Add this to ensure cookie is available for all paths
-    });
-
-    // Return user data
+    // Send both token and user data in response
     res.json({
+      token: result.token,
       user: result.user,
     });
   } catch (error) {

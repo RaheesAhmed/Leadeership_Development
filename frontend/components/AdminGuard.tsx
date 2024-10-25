@@ -21,7 +21,7 @@ const AdminGuard = ({ children }: AdminGuardProps) => {
   }, [isAdminAuthenticated, router, currentPath]);
 
   if (!isAdminAuthenticated && currentPath !== "/admin/login") {
-    return null;
+    router.push("/admin/login");
   }
 
   return <>{children}</>;

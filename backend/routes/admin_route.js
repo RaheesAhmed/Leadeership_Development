@@ -7,6 +7,8 @@ import {
   handleTrainingUpload,
   handleGetSubscriptionStats,
   handleGetAssessmentStats,
+  handleGetUserGrowth,
+  handleGetRevenueStats,
 } from "../controller/admin_controller.js";
 import multer from "multer";
 
@@ -19,15 +21,11 @@ router.use(requireAdmin);
 
 // Admin dashboard statistics
 router.get("/stats", handleGetAdminStats);
-
-// Recent activity
 router.get("/activity", handleGetRecentActivity);
-
-// Subscription statistics
 router.get("/subscription-stats", handleGetSubscriptionStats);
-
-// Assessment statistics
 router.get("/assessment-stats", handleGetAssessmentStats);
+router.get("/user-growth", handleGetUserGrowth);
+router.get("/revenue", handleGetRevenueStats);
 
 // Upload training file
 router.post("/upload-training", upload.single("file"), handleTrainingUpload);

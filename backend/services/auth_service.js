@@ -7,132 +7,124 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 export const registerUser = async (name, email, password, role, department) => {
   try {
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Register with Supabase Auth first
+    // Register with Supabase Auth
     const { data: authData, error: authError } =
       await supabaseClient.auth.signUp({
         email,
         password,
-        options: {
-          data: { name, role, department },
-        },
       });
 
-    if (authError) {
-      logger.error("Supabase auth error:", authError);
-      throw new Error(authError.message);
-    }
+    if (authError) throw authError;
 
     if (!authData.user) {
-      throw new Error("Failed to create user");
+      throw new Error("Registration failed");
     }
 
-    // Create user in our database
-    const { data: user, error: dbError } = await supabaseClient
+    // Insert into users table
+    const { data: userData, error: userError } = await supabaseClient
       .from("users")
-      .insert({
-        id: authData.user.id,
-        email,
-        name,
-        role,
-        department,
-        password: hashedPassword,
-      })
+      .insert([
+        {
+          id: authData.user.id,
+          email,
+          name,
+          role: role || "user",
+          department,
+        },
+      ])
       .select()
-      .single();
+      .limit(1);
 
-    if (dbError) {
-      logger.error("Database error:", dbError);
-      throw new Error("Failed to create user record");
+    if (userError) throw userError;
+
+    if (!userData || userData.length === 0) {
+      throw new Error("Failed to create user profile");
     }
 
-    // Generate JWT
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "24h" }
-    );
-
-    return { user, token };
+    return {
+      token: authData.session?.access_token,
+      user: userData[0],
+    };
   } catch (error) {
     logger.error("Registration error:", error);
-    throw error;
+    throw new Error(error.message || "Registration failed");
   }
 };
 
 export const loginUser = async (email, password) => {
   try {
-    // Get user from database
-    const { data: user, error } = await supabaseClient
+    // First authenticate with Supabase
+    const { data: authData, error: authError } =
+      await supabaseClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+    if (authError) throw authError;
+
+    if (!authData || !authData.session) {
+      throw new Error("Authentication failed");
+    }
+
+    // Get user data from the users table
+    const { data: users, error: userError } = await supabaseClient
       .from("users")
       .select("*")
       .eq("email", email)
-      .single();
+      .limit(1);
 
-    if (error || !user) {
+    if (userError) throw userError;
+
+    if (!users || users.length === 0) {
       throw new Error("User not found");
     }
 
-    // Verify password
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      throw new Error("Invalid credentials");
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "24h" }
-    );
+    const userData = users[0];
 
     return {
+      token: authData.session.access_token,
       user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        department: userData.department,
       },
-      token,
     };
   } catch (error) {
     logger.error("Login error:", error);
-    throw error;
+    throw new Error(error.message || "Login failed");
   }
 };
 
-export const updateUserProfile = async (userId, updateData) => {
+export const updateUserProfile = async (userId, updates) => {
   try {
     const { data, error } = await supabaseClient
       .from("users")
-      .update(updateData)
+      .update(updates)
       .eq("id", userId)
-      .select()
-      .single();
+      .select();
 
-    if (error) throw new Error(`Error updating user profile: ${error.message}`);
+    if (error) throw error;
 
-    return data;
+    if (!data || data.length === 0) {
+      throw new Error("User not found");
+    }
+
+    return data[0];
   } catch (error) {
-    console.error("Error in updateUserProfile:", error);
-    throw error;
+    logger.error("Profile update error:", error);
+    throw new Error(error.message || "Profile update failed");
   }
 };
 
 export const logoutUser = async (userId) => {
   try {
-    // You might want to invalidate the token on the server side
-    // or perform any cleanup needed
-    return { message: "Logged out successfully" };
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) throw error;
+    return true;
   } catch (error) {
     logger.error("Logout error:", error);
-    throw error;
+    throw new Error(error.message || "Logout failed");
   }
 };

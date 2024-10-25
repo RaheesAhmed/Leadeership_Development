@@ -81,30 +81,38 @@ export default function StartPage() {
 
   const handleAssessmentComplete = async (answers: any) => {
     setIsLoading(true);
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/assistant/generate-development-plan`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userInfo,
-            responsibilityLevel,
-            answers,
-            assessmentCompleted: true,
-          }),
-        }
-      );
-      const data = await response.json();
-      console.log("Generated plan:", data);
+    const token = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("token="))
+      ?.split("=")[1];
+
+    if (!token) {
+      console.error("No authentication token found");
+      router.push("/login");
+      return;
+    }
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_SERVER_URL}/api/assistant/generate-development-plan`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userInfo,
+          responsibilityLevel,
+          answers,
+          assessmentCompleted: true,
+        }),
+      }
+    );
+    const data = await response.json();
+    console.log("Generated plan:", data);
+    if (data.plan) {
       setGeneratedPlan(data.plan);
       setStage("planGenerated");
-    } catch (error) {
-      console.error("Error generating plan:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -116,6 +124,17 @@ export default function StartPage() {
 
     setIsLoading(true);
 
+    const token = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("token="))
+      ?.split("=")[1];
+
+    if (!token) {
+      console.error("No authentication token found");
+      router.push("/login");
+      return;
+    }
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_SERVER_URL}/api/assistant/generate-development-plan`,
@@ -123,6 +142,7 @@ export default function StartPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             userInfo,
@@ -133,8 +153,10 @@ export default function StartPage() {
       );
       const data = await response.json();
       console.log("Generated plan:", data);
-      setGeneratedPlan(data.plan);
-      setStage("planGenerated");
+      if (data.plan) {
+        setGeneratedPlan(data.plan);
+        setStage("planGenerated");
+      }
     } catch (error) {
       console.error("Error generating plan:", error);
     } finally {
@@ -147,7 +169,7 @@ export default function StartPage() {
     if (generatedPlan) {
       localStorage.setItem("developmentPlan", generatedPlan);
     }
-    // router.push("/dashboard");
+    router.push("/dashboard");
   };
 
   const renderStage = () => {

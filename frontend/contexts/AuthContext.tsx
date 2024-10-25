@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User } from "@/types/auth";
-import axios from "@/lib/axios"; // Use the configured axios instance
+import axios from "@/lib/axios";
 import { useRouter } from "next/navigation";
 
 export interface AuthContextType {
@@ -25,60 +25,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshAuth = async () => {
     try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth/profile`
-      );
+      const token = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("token="))
+        ?.split("=")[1];
+
+      if (!token) {
+        setUser(null);
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await axios.get("/api/auth/profile");
+
       if (response.data.user) {
         setUser(response.data.user);
         setIsAuthenticated(true);
-        // Set admin cookie if user is admin
-        if (response.data.user.role === "admin") {
-          document.cookie = "isAdmin=true; path=/";
-        }
       } else {
         setUser(null);
         setIsAuthenticated(false);
-        document.cookie =
-          "isAdmin=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
       }
     } catch (error) {
       console.error("Auth refresh failed:", error);
       setUser(null);
       setIsAuthenticated(false);
-      document.cookie =
-        "isAdmin=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Check auth status on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        await refreshAuth();
-      } catch (error) {
-        console.error("Initial auth check failed:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkAuth();
+    refreshAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth/login`,
-        { email, password }
-      );
-      const { user } = response.data;
+      const response = await axios.post("/api/auth/login", {
+        email,
+        password,
+      });
 
-      if (user) {
-        setUser(user);
-        setIsAuthenticated(true);
-        router.replace("/dashboard");
+      const { token, user } = response.data;
+
+      if (!token || !user) {
+        throw new Error("Invalid response from server");
       }
-    } catch (error) {
+
+      // Set the token cookie with proper encoding
+      const encodedToken = encodeURIComponent(token);
+      document.cookie = `token=${encodedToken}; path=/; max-age=86400; SameSite=Lax`;
+
+      // Update state
+      setUser(user);
+      setIsAuthenticated(true);
+
+      // Navigate to dashboard
+      router.push("/dashboard");
+    } catch (error: any) {
       console.error("Login failed:", error);
+      // Clear any existing token
+      document.cookie =
+        "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      setUser(null);
+      setIsAuthenticated(false);
       throw error;
     }
   };
@@ -94,9 +104,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         `${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth/register`,
         userData
       );
-      const { user } = response.data;
 
-      if (user) {
+      const { user, token } = response.data;
+
+      if (user && token) {
+        document.cookie = `token=${token}; path=/; max-age=86400`;
         setUser(user);
         setIsAuthenticated(true);
         router.replace("/dashboard");
@@ -110,6 +122,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await axios.post(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth/logout`);
+      // Clear the token cookie
+      document.cookie =
+        "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
       setUser(null);
       setIsAuthenticated(false);
       router.replace("/login");
@@ -129,9 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>
-      {!isLoading && children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 }
 

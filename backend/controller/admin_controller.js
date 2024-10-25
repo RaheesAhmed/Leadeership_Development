@@ -8,7 +8,10 @@ export const handleGetAdminStats = async (req, res) => {
       .from("users")
       .select("*");
 
-    if (usersError) throw usersError;
+    if (usersError) {
+      logger.error("Error fetching users:", usersError);
+      throw usersError;
+    }
     const usersCount = users?.length || 0;
 
     // Get active subscriptions with proper error handling
@@ -17,7 +20,10 @@ export const handleGetAdminStats = async (req, res) => {
       .select("*")
       .eq("status", "active");
 
-    if (subsError) throw subsError;
+    if (subsError) {
+      logger.error("Error fetching subscriptions:", subsError);
+      throw subsError;
+    }
     const activeSubscriptions = subscriptions?.length || 0;
 
     // Get total assessments with proper error handling
@@ -25,18 +31,26 @@ export const handleGetAdminStats = async (req, res) => {
       .from("assessments")
       .select("*");
 
-    if (assessError) throw assessError;
+    if (assessError) {
+      logger.error("Error fetching assessments:", assessError);
+      throw assessError;
+    }
     const assessmentsCount = assessments?.length || 0;
 
     // Get total consultants with proper error handling
     const { data: consultants, error: consultError } = await supabaseClient
-      .from("consultant_profiles")
-      .select("*");
+      .from("users")
+      .select("*")
+      .eq("role", "consultant");
 
-    if (consultError) throw consultError;
+    if (consultError) {
+      logger.error("Error fetching consultants:", consultError);
+      throw consultError;
+    }
     const consultantsCount = consultants?.length || 0;
 
-    logger.info("Admin stats fetched successfully:", {
+    // Log the stats for debugging
+    logger.info("Admin stats:", {
       usersCount,
       activeSubscriptions,
       assessmentsCount,
@@ -61,10 +75,14 @@ export const handleGetRecentActivity = async (req, res) => {
     const { data: recentUsers, error: usersError } = await supabaseClient
       .from("users")
       .select("id, name, email, created_at")
+      .neq("role", "admin") // Exclude admin users
       .order("created_at", { ascending: false })
       .limit(5);
 
-    if (usersError) throw usersError;
+    if (usersError) {
+      logger.error("Error fetching recent users:", usersError);
+      throw usersError;
+    }
 
     // Get recent assessments with user info
     const { data: recentAssessments, error: assessError } = await supabaseClient
@@ -83,9 +101,16 @@ export const handleGetRecentActivity = async (req, res) => {
       .order("created_at", { ascending: false })
       .limit(5);
 
-    if (assessError) throw assessError;
+    if (assessError) {
+      logger.error("Error fetching recent assessments:", assessError);
+      throw assessError;
+    }
 
-    logger.info("Recent activity fetched successfully");
+    // Log the activity data for debugging
+    logger.info("Recent activity:", {
+      recentUsers: recentUsers?.length || 0,
+      recentAssessments: recentAssessments?.length || 0,
+    });
 
     res.json({
       recentUsers: recentUsers || [],
@@ -158,5 +183,61 @@ export const handleGetAssessmentStats = async (req, res) => {
   } catch (error) {
     logger.error("Error in handleGetAssessmentStats:", error);
     res.status(500).json({ error: "Failed to fetch assessment statistics" });
+  }
+};
+
+// Add user growth stats
+export const handleGetUserGrowth = async (req, res) => {
+  try {
+    const { data: users, error } = await supabaseClient
+      .from("users")
+      .select("created_at")
+      .neq("role", "admin")
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+
+    const monthlyGrowth = (users || []).reduce((acc, user) => {
+      const month = new Date(user.created_at).toLocaleString("default", {
+        month: "long",
+      });
+      acc[month] = (acc[month] || 0) + 1;
+      return acc;
+    }, {});
+
+    logger.info("User growth stats:", monthlyGrowth);
+    res.json(monthlyGrowth);
+  } catch (error) {
+    logger.error("Error in handleGetUserGrowth:", error);
+    res.status(500).json({ error: "Failed to fetch user growth statistics" });
+  }
+};
+
+// Add revenue stats (mock data for now)
+export const handleGetRevenueStats = async (req, res) => {
+  try {
+    const { data: subscriptions, error } = await supabaseClient
+      .from("subscriptions")
+      .select("*")
+      .eq("status", "active");
+
+    if (error) throw error;
+
+    // Calculate total revenue (mock calculation)
+    const total = (subscriptions?.length || 0) * 100; // Assuming $100 per subscription
+    const monthly = total / 12;
+    const growth = 15; // Mock growth percentage
+
+    const revenueStats = {
+      total,
+      monthly,
+      growth,
+    };
+
+    logger.info("Revenue stats:", revenueStats);
+    res.json(revenueStats);
+  } catch (error) {
+    logger.error("Error in handleGetRevenueStats:", error);
+    res.status(500).json({ error: "Failed to fetch revenue statistics" });
   }
 };
