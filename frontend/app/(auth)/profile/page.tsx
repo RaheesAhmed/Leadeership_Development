@@ -1,205 +1,166 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useState, useEffect } from "react";
+import { toast } from "@/hooks/use-toast";
+import axios from "@/lib/axios";
 
-interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string;
-}
-
-export default function UserProfilePage() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("");
-  const [department, setDepartment] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const router = useRouter();
+export default function ProfilePage() {
+  const { user, refreshAuth } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedProfile, setEditedProfile] = useState({
+    name: "",
+    email: "",
+    department: "",
+  });
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth/protected/profile`,
-          {
-            headers: {
-              Authorization: `Bearer ${getCookie("token")}`,
-            },
-          }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setProfile(data.user);
-          setName(data.user.name);
-          setRole(data.user.role);
-          setDepartment(data.user.department);
-        } else {
-          setError("Failed to fetch profile");
-        }
-      } catch (err) {
-        setError("An error occurred while fetching the profile");
-      }
-    };
-
-    fetchProfile();
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    try {
-      const response = await fetch("/api/auth/protected/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getCookie("token")}`,
-        },
-        body: JSON.stringify({ name, role, department }),
+    if (user) {
+      setEditedProfile({
+        name: user.name || "",
+        email: user.email || "",
+        department: user.department || "",
       });
+    }
+  }, [user]);
 
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data.user);
-        setSuccess("Profile updated successfully");
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || "Failed to update profile");
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
+  const handleUpdateProfile = async () => {
+    try {
+      await axios.put(
+        `${process.env.NEXT_PUBLIC_SERVER_URL}/api/auth/profile`,
+        {
+          name: editedProfile.name,
+          department: editedProfile.department,
+        }
+      );
+
+      await refreshAuth(); // Refresh user data after update
+      setIsEditing(false);
+      toast({
+        title: "Profile updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Failed to update profile",
+        variant: "destructive",
+      });
     }
   };
 
-  const getCookie = (name: string) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(";").shift();
-  };
-
-  if (!profile) {
+  if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        Loading...
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold text-center font-poppins">
-            User Profile
-          </CardTitle>
-          <CardDescription className="text-center">
-            View and edit your profile information
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full"
-              />
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto">
+        <Card className="shadow-lg">
+          <CardHeader className="border-b border-gray-200">
+            <CardTitle className="text-2xl font-semibold">
+              Profile Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-6">
+              {isEditing ? (
+                <>
+                  <div className="space-y-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="name">Name</Label>
+                      <Input
+                        id="name"
+                        value={editedProfile.name}
+                        onChange={(e) =>
+                          setEditedProfile({
+                            ...editedProfile,
+                            name: e.target.value,
+                          })
+                        }
+                        className="border-gray-300 focus:border-primary focus:ring-primary"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        value={editedProfile.email}
+                        disabled
+                        className="bg-gray-50 border-gray-300"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="department">Department</Label>
+                      <Input
+                        id="department"
+                        value={editedProfile.department}
+                        onChange={(e) =>
+                          setEditedProfile({
+                            ...editedProfile,
+                            department: e.target.value,
+                          })
+                        }
+                        className="border-gray-300 focus:border-primary focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsEditing(false)}
+                      className="text-gray-700"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleUpdateProfile}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center py-3 border-b">
+                      <span className="font-semibold text-gray-700">Name</span>
+                      <span>{user.name}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-3 border-b">
+                      <span className="font-semibold text-gray-700">Email</span>
+                      <span>{user.email}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-3 border-b">
+                      <span className="font-semibold text-gray-700">
+                        Department
+                      </span>
+                      <span>{user.department}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      onClick={() => setIsEditing(true)}
+                      variant="outline"
+                      className="text-primary hover:bg-primary/10"
+                    >
+                      Edit Profile
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={profile.email}
-                disabled
-                className="w-full bg-muted"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={setRole} required>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="employee">Employee</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="executive">Executive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Input
-                id="department"
-                type="text"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                required
-                className="w-full"
-              />
-            </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {success && (
-              <Alert
-                variant="default"
-                className="bg-green-50 text-green-800 border-green-300"
-              >
-                <CheckCircle className="h-4 w-4 text-green-400" />
-                <AlertTitle>Success</AlertTitle>
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
-            )}
-            <Button type="submit" className="w-full gradient-bg text-white">
-              Update Profile
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/dashboard")}
-            className="text-primary"
-          >
-            Back to Dashboard
-          </Button>
-        </CardFooter>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
