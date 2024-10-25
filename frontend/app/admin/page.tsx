@@ -24,6 +24,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 interface AdminStats {
   usersCount: number;
@@ -59,24 +61,52 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [activity, setActivity] = useState<RecentActivity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subscriptionStats, setSubscriptionStats] = useState<
+    Record<string, number>
+  >({});
+  const [assessmentStats, setAssessmentStats] = useState<
+    Record<string, number>
+  >({});
+  const router = useRouter();
+  const { adminLogout } = useAdminAuth();
 
   useEffect(() => {
     const fetchAdminData = async () => {
       try {
-        const [statsResponse, activityResponse] = await Promise.all([
+        const [
+          statsResponse,
+          activityResponse,
+          subscriptionResponse,
+          assessmentResponse,
+        ] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/stats`),
           fetch(`${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/activity`),
+          fetch(
+            `${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/subscription-stats`
+          ),
+          fetch(
+            `${process.env.NEXT_PUBLIC_SERVER_URL}/api/admin/assessment-stats`
+          ),
         ]);
 
-        if (!statsResponse.ok || !activityResponse.ok) {
+        if (
+          !statsResponse.ok ||
+          !activityResponse.ok ||
+          !subscriptionResponse.ok ||
+          !assessmentResponse.ok
+        ) {
           throw new Error("Failed to fetch admin data");
         }
 
         const statsData = await statsResponse.json();
         const activityData = await activityResponse.json();
+        const subscriptionData = await subscriptionResponse.json();
+        const assessmentData = await assessmentResponse.json();
 
         setStats(statsData);
         setActivity(activityData);
+        setSubscriptionStats(subscriptionData);
+        setAssessmentStats(assessmentData);
       } catch (error) {
         console.error("Error fetching admin data:", error);
         setErrorMessage("Failed to load admin dashboard data");
@@ -128,6 +158,10 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleAdminLogout = () => {
+    adminLogout();
+  };
+
   const StatCard = ({
     title,
     value,
@@ -153,7 +187,12 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen w-full bg-muted/40">
       <main className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <Button onClick={handleAdminLogout} variant="outline">
+            Logout
+          </Button>
+        </div>
 
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -177,6 +216,63 @@ export default function AdminDashboard() {
             value={stats?.consultantsCount ?? 0}
             icon={Briefcase}
           />
+        </div>
+
+        {/* Add Subscription Stats */}
+        <div className="grid gap-6 md:grid-cols-2 mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Subscription Distribution</CardTitle>
+              <CardDescription>
+                Active subscriptions by plan type
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-[200px] w-full" />
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(subscriptionStats || {}).map(
+                    ([plan, count]) => (
+                      <div
+                        key={plan}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="capitalize">{plan}</span>
+                        <span className="font-bold">{count}</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Assessment Trends</CardTitle>
+              <CardDescription>Monthly assessment completions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <Skeleton className="h-[200px] w-full" />
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(assessmentStats || {}).map(
+                    ([month, count]) => (
+                      <div
+                        key={month}
+                        className="flex items-center justify-between"
+                      >
+                        <span>{month}</span>
+                        <span className="font-bold">{count}</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">

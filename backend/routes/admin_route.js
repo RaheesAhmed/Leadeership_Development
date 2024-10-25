@@ -5,13 +5,17 @@ import {
   handleGetAdminStats,
   handleGetRecentActivity,
   handleTrainingUpload,
+  handleGetSubscriptionStats,
+  handleGetAssessmentStats,
 } from "../controller/admin_controller.js";
-import { handleDataImport } from "../controller/data_import_controller.js";
+import multer from "multer";
 
 const router = express.Router();
+const upload = multer({ dest: "uploads/" });
 
-// Apply both auth and admin middleware to all routes
-router.use(requireAuth, requireAdmin);
+// Apply auth middleware to all routes
+router.use(requireAuth);
+router.use(requireAdmin);
 
 // Admin dashboard statistics
 router.get("/stats", handleGetAdminStats);
@@ -19,10 +23,13 @@ router.get("/stats", handleGetAdminStats);
 // Recent activity
 router.get("/activity", handleGetRecentActivity);
 
-// Upload training file
-router.post("/training", handleTrainingUpload);
+// Subscription statistics
+router.get("/subscription-stats", handleGetSubscriptionStats);
 
-// Import assessment data
-router.post("/import-data", handleDataImport);
+// Assessment statistics
+router.get("/assessment-stats", handleGetAssessmentStats);
+
+// Upload training file
+router.post("/upload-training", upload.single("file"), handleTrainingUpload);
 
 export default router;

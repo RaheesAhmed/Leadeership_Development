@@ -85,6 +85,12 @@ export default function Navbar() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {user.role === "admin" && (
+                  <Link href="/admin">
+                    <Button variant="ghost">Admin</Button>
+                  </Link>
+                )}
               </>
             ) : (
               <>

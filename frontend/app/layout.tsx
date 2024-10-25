@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "../contexts/SubscriptionContext";
 import Navbar from "@/components/Navbar";
+import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -32,8 +33,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <AuthProvider>
-          <Navbar />
-          {children}
+          <AdminAuthProvider>{children}</AdminAuthProvider>
         </AuthProvider>
       </body>
     </html>

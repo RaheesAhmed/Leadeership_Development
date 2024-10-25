@@ -31,14 +31,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.data.user) {
         setUser(response.data.user);
         setIsAuthenticated(true);
+        // Set admin cookie if user is admin
+        if (response.data.user.role === "admin") {
+          document.cookie = "isAdmin=true; path=/";
+        }
       } else {
         setUser(null);
         setIsAuthenticated(false);
+        document.cookie =
+          "isAdmin=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
       }
     } catch (error) {
       console.error("Auth refresh failed:", error);
       setUser(null);
       setIsAuthenticated(false);
+      document.cookie =
+        "isAdmin=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
     }
   };
 
